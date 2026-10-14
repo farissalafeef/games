@@ -1,0 +1,9 @@
+{
+  "appId": "com.khalast.app",
+  "appName": "خَلّصت",
+  "webDir": ".",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}

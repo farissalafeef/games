@@ -1,0 +1,34 @@
+{
+  "name": "خَلّصت | إنسان حيوان نبات جماد",
+  "short_name": "خَلّصت",
+  "description": "لعبة إنسان حيوان نبات جماد بلاد الجماعية الكلاسيكية مع غرف الأصدقاء حتى 8 لاعبين وتصويت المحكمة والخصم الذكي",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0f19",
+  "theme_color": "#0b0f19",
+  "dir": "rtl",
+  "lang": "ar",
+  "categories": ["games", "entertainment", "social"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
