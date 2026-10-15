@@ -100,6 +100,7 @@ function getSafeRoomData(room) {
       avatar: p.avatar,
       score: p.score,
       isHost: p.id === room.hostId,
+      disconnected: !!p.disconnected,
       hasSubmitted: !!(room.answers && room.answers[p.id])
     }))
   };
@@ -108,14 +109,21 @@ function getSafeRoomData(room) {
 // إنشاء خادم WebSocket للغرف واللعب الجماعي المباشر
 const wss = new WebSocketServer({ server });
 
-// نبض دوري لإبقاء الاتصال حياً عبر بروكسي Render وشبكات الجوال
+// نبض دوري لإبقاء الاتصال حياً عبر بروكسي Render وشبكات الجوال بمرونة
 const heartbeat = setInterval(() => {
   wss.clients.forEach((client) => {
-    if (client.isAlive === false) return client.terminate();
+    if (client.isAlive === false) {
+      client.missedPings = (client.missedPings || 0) + 1;
+      if (client.missedPings >= 2) {
+        return client.terminate();
+      }
+    } else {
+      client.missedPings = 0;
+    }
     client.isAlive = false;
     try { client.ping(); } catch (e) {}
   });
-}, 25000);
+}, 20000);
 wss.on('close', () => clearInterval(heartbeat));
 
 wss.on('connection', (ws) => {
@@ -223,6 +231,79 @@ wss.on('connection', (ws) => {
               joinedPlayerName: payload.playerName
             }
           });
+          break;
+        }
+
+        // استعادة الاتصال بالغرفة (بعد التبديل لتطبيق آخر أو ضعف الشبكة)
+        case 'RECONNECT_ROOM': {
+          const reqCode = (payload.roomCode || '').toUpperCase().trim();
+          const targetRoom = rooms.get(reqCode);
+          if (!targetRoom) {
+            ws.send(JSON.stringify({
+              type: 'ERROR',
+              payload: { message: `انتهت صلاحية الغرفة (${reqCode}) أو تم إغلاقها.` }
+            }));
+            return;
+          }
+
+          const existingPlayer = targetRoom.players.find(p => p.id === payload.playerId);
+          if (existingPlayer) {
+            if (existingPlayer.disconnectTimeout) {
+              clearTimeout(existingPlayer.disconnectTimeout);
+              existingPlayer.disconnectTimeout = null;
+            }
+            existingPlayer.ws = ws;
+            existingPlayer.disconnected = false;
+            playerId = existingPlayer.id;
+            playerRoomCode = reqCode;
+
+            ws.send(JSON.stringify({
+              type: 'ROOM_RECONNECTED',
+              payload: {
+                room: getSafeRoomData(targetRoom),
+                playerId: playerId
+              }
+            }));
+
+            broadcastToRoom(targetRoom, {
+              type: 'ROOM_PLAYERS_UPDATE',
+              payload: { room: getSafeRoomData(targetRoom) }
+            });
+          } else {
+            // انضمام كلاعب جديد في حال لم يُعثر على اللاعب السابق
+            if (targetRoom.players.length < MAX_PLAYERS_PER_ROOM) {
+              playerId = payload.playerId || ('p_' + Math.random().toString(36).substring(2, 9));
+              playerRoomCode = reqCode;
+              targetRoom.players.push({
+                id: playerId,
+                name: payload.playerName || `لاعب ${targetRoom.players.length + 1}`,
+                avatar: payload.playerAvatar || '🎮',
+                score: 0,
+                ws: ws
+              });
+
+              ws.send(JSON.stringify({
+                type: 'ROOM_JOINED',
+                payload: {
+                  room: getSafeRoomData(targetRoom),
+                  playerId: playerId
+                }
+              }));
+
+              broadcastToRoom(targetRoom, {
+                type: 'ROOM_PLAYERS_UPDATE',
+                payload: {
+                  room: getSafeRoomData(targetRoom),
+                  joinedPlayerName: payload.playerName
+                }
+              });
+            } else {
+              ws.send(JSON.stringify({
+                type: 'ERROR',
+                payload: { message: 'الغرفة ممتلئة بالكامل!' }
+              }));
+            }
+          }
           break;
         }
 
@@ -432,33 +513,51 @@ wss.on('connection', (ws) => {
     }
   });
 
-  // معالجة انقطاع الاتصال
+  // معالجة انقطاع الاتصال بمرونة وأمان للهواتف المحمولة
   ws.on('close', () => {
     if (playerRoomCode && rooms.has(playerRoomCode)) {
       const room = rooms.get(playerRoomCode);
-      const playerIndex = room.players.findIndex(p => p.id === playerId);
+      const player = room.players.find(p => p.id === playerId);
       
-      if (playerIndex !== -1) {
-        const leftPlayer = room.players[playerIndex];
-        room.players.splice(playerIndex, 1);
+      if (player) {
+        player.ws = null;
+        player.disconnected = true;
 
-        // إذا فرغت الغرفة تماماً نحذفها
-        if (room.players.length === 0) {
-          clearTimeout(room.panicTimeout);
-          rooms.delete(playerRoomCode);
-        } else {
-          // إذا كان المغادر هو المستضيف، ننقل الاستضافة للاعب التالي
-          if (room.hostId === playerId) {
-            room.hostId = room.players[0].id;
-          }
-          broadcastToRoom(room, {
-            type: 'PLAYER_LEFT',
-            payload: {
-              playerName: leftPlayer.name,
-              room: getSafeRoomData(room)
+        // إشعار بقية اللاعبين بحالة الاتصال
+        broadcastToRoom(room, {
+          type: 'ROOM_PLAYERS_UPDATE',
+          payload: { room: getSafeRoomData(room) }
+        });
+
+        // مهلة أمان 90 ثانية لإتاحة إعادة الاتصال عند مشاركة الرابط أو التبديل للواتساب
+        if (player.disconnectTimeout) clearTimeout(player.disconnectTimeout);
+        player.disconnectTimeout = setTimeout(() => {
+          if (!rooms.has(playerRoomCode)) return;
+          const currentRoom = rooms.get(playerRoomCode);
+          const pIndex = currentRoom.players.findIndex(p => p.id === playerId);
+          if (pIndex !== -1 && currentRoom.players[pIndex].disconnected) {
+            const leftPlayer = currentRoom.players[pIndex];
+            currentRoom.players.splice(pIndex, 1);
+
+            // إذا فرغت الغرفة تماماً نحذفها
+            if (currentRoom.players.length === 0) {
+              clearTimeout(currentRoom.panicTimeout);
+              rooms.delete(playerRoomCode);
+            } else {
+              // إذا كان المغادر هو المستضيف، ننقل الاستضافة للاعب التالي
+              if (currentRoom.hostId === playerId) {
+                currentRoom.hostId = currentRoom.players[0].id;
+              }
+              broadcastToRoom(currentRoom, {
+                type: 'PLAYER_LEFT',
+                payload: {
+                  playerName: leftPlayer.name,
+                  room: getSafeRoomData(currentRoom)
+                }
+              });
             }
-          });
-        }
+          }
+        }, 90000);
       }
     }
   });

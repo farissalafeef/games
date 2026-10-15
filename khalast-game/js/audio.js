@@ -62,6 +62,40 @@ class SoundEngine {
     this.playTone(880, 'triangle', 0.06, 0.1, false);
   }
 
+  playComboChime(level = 1) {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const scale = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50, 1174.66, 1318.51];
+    const freq = scale[Math.min(level - 1, scale.length - 1)];
+    this.playTone(freq, 'sine', 0.14, 0.18, false);
+    setTimeout(() => {
+      this.playTone(freq * 1.5, 'sine', 0.18, 0.14, false);
+    }, 50);
+  }
+
+  playHeartbeat() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    this.playTone(95, 'sine', 0.09, 0.32, true);
+    setTimeout(() => {
+      this.playTone(75, 'sine', 0.13, 0.25, true);
+    }, 130);
+  }
+
+  playMagicSparkle() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const notes = [659.25, 783.99, 987.77, 1318.51, 1567.98];
+    notes.forEach((freq, idx) => {
+      setTimeout(() => {
+        this.playTone(freq, 'sine', 0.12, 0.12, false);
+      }, idx * 45);
+    });
+  }
+
   playSpinClick(pitch = 750) {
     if (this.muted) return;
     this.init();
@@ -335,6 +369,55 @@ class SoundEngine {
   playVictory() {
     // توجيه إلى الصوت الاحتفالي المتطور
     this.playCelebratoryVictory();
+  }
+
+  /**
+   * نطق العبارات والمؤثرات الصوتية باللغة الإنجليزية حصراً وبنبرة أركيد حماسية
+   * stop: "Stop! Time's up!"
+   * win_first: "Awesome! You're number one!"
+   * made_up: "Don't make stuff up!"
+   */
+  speakVoice(action) {
+    if (this.muted) return;
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {}
+
+    const voicePhrases = {
+      stop: "Stop! Time's up!",
+      win_first: "Awesome! You're number one!",
+      made_up: "Don't make stuff up!"
+    };
+
+    const text = voicePhrases[action];
+    if (!text) return;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.volume = 1.0;
+    utterance.rate = 1.08; // نبرة سريعة وحماسية
+    utterance.pitch = 1.15; // نبرة أركيد مميزة
+
+    // اختيار أفضل صوت إنجليزي متاح في المتصفح
+    try {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        // نفضل الأصوات الطبيعية أو المشهورة بجودتها العالية
+        const bestVoice = voices.find(v => 
+          v.lang && v.lang.startsWith('en') && 
+          (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Jenny') || v.name.includes('Guy'))
+        ) || voices.find(v => v.lang && v.lang.startsWith('en'));
+        if (bestVoice) utterance.voice = bestVoice;
+      }
+    } catch (e) {}
+
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('SpeechSynthesis error:', e);
+    }
   }
 }
 

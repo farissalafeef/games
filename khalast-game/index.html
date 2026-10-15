@@ -27,7 +27,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   
   <!-- ورقة الأنماط -->
-  <link rel="stylesheet" href="css/style.css?v=6">
+  <link rel="stylesheet" href="css/style.css?v=15">
 </head>
 <body>
 
@@ -69,6 +69,29 @@
       </div>
     </header>
 
+    <!-- بطاقة مستوى وخبرة اللاعب المستمرة (XP & Level) -->
+    <div class="player-profile-banner" id="player-profile-banner" title="مستواك ونقاط خبرتك">
+      <div class="profile-level-badge" id="profile-level-badge">Lv. 1</div>
+      <div class="profile-info-group">
+        <div class="profile-title-row">
+          <span class="profile-rank-name" id="profile-rank-name">مبتدئ الحروف 🌟</span>
+          <span class="profile-xp-counter" id="profile-xp-counter">0 / 150 XP</span>
+        </div>
+        <div class="profile-xp-track">
+          <div class="profile-xp-fill" id="profile-xp-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+      <!-- شارات الحماس السريع (الأيام المتتالية والأوسمة) -->
+      <div class="profile-quick-actions">
+        <button id="streak-badge-btn" class="streak-badge-btn" title="سلسلة الأيام المتتالية">
+          🔥 <span id="streak-count-badge">1</span>
+        </button>
+        <button id="achievements-btn" class="achievements-quick-btn" title="قاعة الأوسمة والإنجازات">
+          🏅 <span id="achievements-count-badge">0/7</span>
+        </button>
+      </div>
+    </div>
+
     <!-- شريط الإحصائيات والمعلومات -->
     <section class="stats-bar">
       <div class="stat-card">
@@ -91,6 +114,9 @@
 
     <!-- قسم الحرف وعجلة فايزر التفاعلية -->
     <section class="letter-section">
+      <!-- شريط تعديل الجولة الغامض (مضاعفة النقاط / سرعة البرق) -->
+      <div id="mystery-modifier-banner" class="mystery-modifier-banner" style="display:none;"></div>
+
       <div class="wheel-wrapper">
         <div id="phaser-wheel-container"></div>
       </div>
@@ -117,10 +143,29 @@
           <span class="ai-status" id="ai-status" data-i18n="ai_waiting">في انتظار بدء الجولة...</span>
         </div>
       </div>
+      <!-- فقاعة كلام وتفاعل الخصم الحي -->
+      <div class="ai-bubble" id="ai-bubble" style="display:none;"></div>
       <div class="ai-progress-bar">
         <div class="ai-progress-fill" id="ai-progress-fill"></div>
       </div>
     </section>
+
+    <!-- شريط تقدم الجولة والكومبو الحماسي -->
+    <div class="round-hud-bar" id="round-hud-bar">
+      <div class="hud-streak-badge" id="hud-streak-badge">
+        <span class="streak-flame">🔥</span>
+        <span id="hud-streak-text">0 متتالي</span>
+      </div>
+      <div class="hud-progress-wrapper">
+        <div class="hud-progress-info">
+          <span>اكتمال الكلمات</span>
+          <strong id="hud-progress-count">0 / 7</strong>
+        </div>
+        <div class="hud-progress-track">
+          <div class="hud-progress-fill" id="hud-progress-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+    </div>
 
     <!-- شبكة إدخال الكلمات والتصنيفات -->
     <section class="categories-grid" id="categories-grid">
@@ -131,6 +176,9 @@
     <div class="stop-action-container" id="stop-action-container">
       <button id="btn-forfeit" class="btn-forfeit" title="انسحاب من الجولة">
         🏳️ انسحاب
+      </button>
+      <button id="btn-hint" class="btn-hint" title="تلميح سحري للكلمة">
+        💡 تلميح (<span id="hint-count-badge">3</span>)
       </button>
       <button id="btn-stop" class="btn-stop" disabled data-i18n="stop_btn">
         🛑 قِف! خَلّصت
@@ -146,6 +194,16 @@
         <h2 class="modal-title" data-i18n="results_title">🏁 نتائج الجولة</h2>
         <div id="result-status-banner" class="result-status-banner" style="display:none;"></div>
         <div id="ai-objection-banner" class="ai-objection-banner" style="display:none;"></div>
+
+        <!-- بطاقة اللقب والإنجاز الفخري -->
+        <div class="player-rank-card" id="player-rank-card">
+          <div class="rank-icon-wrapper" id="rank-icon">👑</div>
+          <div class="rank-details">
+            <div class="rank-badge-title" id="rank-title">سلطان الكلمات</div>
+            <p class="rank-badge-desc" id="rank-desc">أداء بطولي وسرعة بديهة أسطورية!</p>
+          </div>
+        </div>
+
         <p id="modal-round-message" style="color:var(--text-muted);margin-top:6px;"></p>
         <p id="modal-round-score" style="margin-top:10px;font-size:1.15rem;color:var(--accent-gold);"></p>
       </div>
@@ -166,11 +224,19 @@
         </table>
       </div>
 
-      <div class="modal-actions">
-        <button id="modal-next-round-btn" class="btn-primary" data-i18n="next_round_btn">
-          ➡️ الجولة التالية
+      <div class="modal-actions-wrapper">
+        <button id="modal-next-round-btn" class="btn-primary highlight-next-round modal-btn-main" data-i18n="next_round_btn">
+          ⚡ الجولة التالية ➡️
         </button>
-        <button id="modal-exit-game-btn" class="btn-secondary btn-exit" data-i18n="exit_game_btn">
+        <div class="modal-actions-row">
+          <button id="modal-share-btn" class="btn-share" data-i18n="share_btn" title="شارك التحدي مع أصحابك">
+            📢 شارك نتيجتك وتحداهم!
+          </button>
+          <button id="modal-whatsapp-btn" class="btn-whatsapp" data-i18n="whatsapp_btn" title="تحدي مباشر عبر واتساب">
+            💬 واتساب
+          </button>
+        </div>
+        <button id="modal-exit-game-btn" class="btn-secondary btn-exit modal-btn-exit" data-i18n="exit_game_btn">
           🚪 خروج للرئيسية
         </button>
       </div>
@@ -320,6 +386,9 @@
           <button id="btn-copy-room-link" class="icon-btn" style="margin:0 auto;background:rgba(245,158,11,0.2);border-color:#f59e0b;color:#fcd34d;" data-i18n="mp_copy_btn">
             📋 نسخ رابط الدعوة للأصدقاء
           </button>
+          <button id="btn-whatsapp-room-link" class="icon-btn btn-whatsapp-room" style="margin:8px auto 0;background:#25d366;color:#ffffff;border:none;font-weight:800;gap:8px;">
+            💬 دعوة الأصدقاء عبر واتساب
+          </button>
           <p style="font-size:0.8rem;color:var(--text-muted);margin-top:8px;" data-i18n="mp_share_hint">أرسل الرابط لأصدقائك للانضمام فوراً بضغطة واحدة!</p>
         </div>
 
@@ -341,6 +410,47 @@
       <div class="modal-actions" style="margin-top:20px;">
         <button id="close-mp-modal-btn" class="btn-secondary" data-i18n="close_btn">
           إغلاق
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة قاعة الأوسمة والإنجازات (Achievements Modal) -->
+  <div class="modal-backdrop" id="achievements-modal">
+    <div class="modal-box achievements-modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title" style="color:#fbbf24;">🏅 قاعة الأوسمة والإنجازات</h2>
+        <p style="color:var(--text-muted);margin-top:4px;">اجمع الأوسمة وافتح ألقاب الفخر ونقاط الخبرة الإضافية (+100 XP لكل وسام)!</p>
+      </div>
+      <div class="achievements-grid" id="achievements-grid">
+        <!-- يتم حقن بطاقات الأوسمة ديناميكياً بواسطة JavaScript -->
+      </div>
+      <div class="modal-actions" style="margin-top:16px;">
+        <button id="close-achievements-btn" class="btn-primary" style="width:100%;">
+          ✨ رائع، العودة للعب!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة سلسلة الأيام المتتالية والمكافأة اليومية (Streak Modal) -->
+  <div class="modal-backdrop" id="streak-modal">
+    <div class="modal-box streak-modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title" style="color:#f59e0b;">🔥 سلسلة الحماس اليومية</h2>
+        <p style="color:var(--text-muted);margin-top:4px;">العب جولة واحدة على الأقل كل يوم للحفاظ على شعلتك وكسب بونص يومي!</p>
+      </div>
+      <div class="streak-hero-card">
+        <div class="streak-flame-large">🔥</div>
+        <div class="streak-count-big" id="modal-streak-days">1 يوم</div>
+        <p class="streak-encouragement" id="modal-streak-msg">بداية أسطورية! حافظ على شعلتك والعب كل يوم</p>
+      </div>
+      <div class="streak-week-track" id="streak-week-track">
+        <!-- أيام الأسبوع مع حالات الحضور -->
+      </div>
+      <div class="modal-actions" style="margin-top:20px;">
+        <button id="close-streak-btn" class="btn-primary" style="width:100%;">
+          🚀 استمر في التحدي!
         </button>
       </div>
     </div>
@@ -402,18 +512,18 @@
         <li><strong>5 نقاط:</strong> إجابة صحيحة متطابقة مع الخصم.</li>
         <li><strong>+5 نقاط إضافية:</strong> لمن يضغط زر (قِف! خَلّصت) أولاً!</li>
         <li><strong>0 نقاط:</strong> حقل فارغ أو كلمة خاطئة.</li>
-        <li>يمكنك تعديل أي كلمة يدوياً من جدول النتائج إذا كانت كلمة عامية صحيحة!</li>
+        <li>يمكنك طلب الاعتراض والتحكيم والتصويت على أي كلمة عبر المحكمة الذكية!</li>
       </ul>
     </div>
   </aside>
 
   <!-- ملفات منطق اللعبة والترجمة -->
-  <script src="js/i18n.js?v=6"></script>
-  <script src="js/dictionary.js?v=6"></script>
-  <script src="js/audio.js?v=6"></script>
-  <script src="js/phaser-effects.js?v=6"></script>
-  <script src="js/game.js?v=6"></script>
-  <script src="js/multiplayer.js?v=6"></script>
+  <script src="js/i18n.js?v=15"></script>
+  <script src="js/dictionary.js?v=15"></script>
+  <script src="js/audio.js?v=15"></script>
+  <script src="js/phaser-effects.js?v=15"></script>
+  <script src="js/game.js?v=15"></script>
+  <script src="js/multiplayer.js?v=15"></script>
 
   <!-- تسجيل Service Worker وإدارة التثبيت على الجوالات -->
   <script>

@@ -15,7 +15,86 @@ class MultiplayerManager {
 
   init() {
     this.bindDomEvents();
+    this.restoreSession();
     this.checkUrlForRoomInvite();
+
+    // استعادة الاتصال التلقائي عند العودة للمتصفح من الواتساب أو الخلفية
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && this.isMultiplayer && this.currentRoom) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+          this.attemptReconnect();
+        }
+      }
+    });
+  }
+
+  saveSession() {
+    if (!this.currentRoom || !this.myPlayerId) return;
+    try {
+      sessionStorage.setItem('khalast_mp_room', this.currentRoom.code);
+      sessionStorage.setItem('khalast_mp_pid', this.myPlayerId);
+      sessionStorage.setItem('khalast_mp_name', this.playerName);
+      sessionStorage.setItem('khalast_mp_avatar', this.playerAvatar);
+    } catch (e) {}
+  }
+
+  restoreSession() {
+    try {
+      const room = sessionStorage.getItem('khalast_mp_room');
+      const pid = sessionStorage.getItem('khalast_mp_pid');
+      const name = sessionStorage.getItem('khalast_mp_name');
+      const avatar = sessionStorage.getItem('khalast_mp_avatar');
+      if (name) this.playerName = name;
+      if (avatar) this.playerAvatar = avatar;
+
+      // إذا كانت هناك جلسة نشطة سابقة نحاول استعادتها فوراً
+      if (room && pid) {
+        this.currentRoom = { code: room, players: [], maxPlayers: 8 };
+        this.myPlayerId = pid;
+        this.isMultiplayer = true;
+        this.attemptReconnect();
+      }
+    } catch (e) {}
+  }
+
+  clearSession() {
+    try {
+      sessionStorage.removeItem('khalast_mp_room');
+      sessionStorage.removeItem('khalast_mp_pid');
+    } catch (e) {}
+  }
+
+  attemptReconnect() {
+    if (this._reconnecting) return;
+    this._reconnecting = true;
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    this.showMpStatus(isEn ? '⏳ Reconnecting to room...' : '⏳ جاري استعادة الاتصال بالغرفة تلقائياً...');
+
+    let attempts = 0;
+    const tryConnect = () => {
+      attempts++;
+      if (attempts > 6 || !this.isMultiplayer) {
+        this._reconnecting = false;
+        this.showMpStatus('');
+        return;
+      }
+      this.connect(() => {
+        this._reconnecting = false;
+        this.showMpStatus('');
+        const roomCode = this.currentRoom ? this.currentRoom.code : sessionStorage.getItem('khalast_mp_room');
+        const playerId = this.myPlayerId || sessionStorage.getItem('khalast_mp_pid');
+        if (roomCode) {
+          this.send('RECONNECT_ROOM', {
+            roomCode: roomCode,
+            playerId: playerId,
+            playerName: this.playerName,
+            playerAvatar: this.playerAvatar
+          });
+        }
+      });
+      setTimeout(tryConnect, 2500);
+    };
+    tryConnect();
   }
 
   connect(onOpen) {
@@ -73,10 +152,9 @@ class MultiplayerManager {
 
     this.ws.onclose = () => {
       clearTimeout(this._connectTimer);
-      console.log('❌ انقطع الاتصال بخادم الغرف');
-      if (this.isMultiplayer) {
-        alert(isEn ? 'Disconnected from the room.' : 'انقطع الاتصال بالغرفة المشتركة.');
-        this.exitMultiplayer();
+      console.log('⚠️ انقطع اتصال WebSocket');
+      if (this.isMultiplayer && this.currentRoom) {
+        this.attemptReconnect();
       }
     };
   }
@@ -139,6 +217,20 @@ class MultiplayerManager {
       });
     }
 
+    // إدخال رمز الغرفة وتنسيقه تلقائياً
+    const codeInput = document.getElementById('input-room-code');
+    if (codeInput) {
+      codeInput.addEventListener('input', () => {
+        codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      });
+      codeInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          const code = codeInput.value.trim().toUpperCase();
+          if (code) this.joinRoom(code);
+        }
+      });
+    }
+
     // زر نسخ الرابط
     const btnCopyLink = document.getElementById('btn-copy-room-link');
     if (btnCopyLink) {
@@ -185,16 +277,41 @@ class MultiplayerManager {
     }
 
     if (roomCode) {
+      roomCode = roomCode.toUpperCase().trim();
       this.openMultiplayerModal();
       const codeInput = document.getElementById('input-room-code');
       if (codeInput) {
-        codeInput.value = roomCode.toUpperCase();
-        codeInput.focus();
+        codeInput.value = roomCode;
       }
-      const viewSelect = document.getElementById('mp-select-view');
-      if (viewSelect) {
-        viewSelect.style.display = 'block';
-      }
+      const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+      this.showMpStatus(isEn ? `🎉 Joining room (${roomCode})...` : `🎉 جاري الانضمام تلقائياً للغرفة (${roomCode})...`);
+
+      // دخول تلقائي للغرفة بعد نصف ثانية لمنع أي ارتباك للاعب المنضم
+      setTimeout(() => {
+        this.joinRoom(roomCode);
+      }, 500);
+    }
+  }
+
+  shareWhatsAppInvite() {
+    if (!this.currentRoom) return;
+    const url = `${window.location.origin}/join/${this.currentRoom.code}`;
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    const msg = isEn
+      ? `🎮 Play with me in Words Challenge!\nRoom Code: ${this.currentRoom.code}\nJoin instantly: ${url}`
+      : `🎮 تعال العب معي في تحدي الحروف والكلمات!\nرمز الغرفة: ${this.currentRoom.code}\nادخل والعب معي فوراً بضغطة واحدة: ${url}`;
+    
+    // مشاركة عبر واجهة النظام الرسمية Share Sheet لعدم فصل المتصفح في الجوال
+    if (navigator.share) {
+      navigator.share({
+        title: isEn ? 'Words Challenge Room' : 'غرفة تحدي الحروف والكلمات',
+        text: msg,
+        url: url
+      }).catch(() => {
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+      });
+    } else {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
     }
   }
 
@@ -249,25 +366,17 @@ class MultiplayerManager {
     });
   }
 
-  shareWhatsAppInvite() {
-    if (!this.currentRoom) return;
-    const url = `${window.location.origin}/join/${this.currentRoom.code}`;
-    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
-    const msg = isEn
-      ? `🎮 Join my room in Words Challenge! Room Code: ${this.currentRoom.code}\nClick to join instantly: ${url}`
-      : `🎮 تعال العب معي في لعبة الحروف والكلمات! رمز الغرفة: ${this.currentRoom.code}\nادخل والعب معي فوراً بضغطة واحدة: ${url}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-  }
-
   handleServerMessage(data) {
     const { type, payload } = data;
 
     switch (type) {
       case 'ROOM_CREATED':
-      case 'ROOM_JOINED': {
+      case 'ROOM_JOINED':
+      case 'ROOM_RECONNECTED': {
         this.isMultiplayer = true;
         this.currentRoom = payload.room;
         this.myPlayerId = payload.playerId;
+        this.saveSession();
         this.renderLobbyUI();
         this.updateHeaderRoomBadge();
         if (typeof game !== 'undefined' && game.unlockAchievement) {
@@ -475,6 +584,7 @@ class MultiplayerManager {
     this.isMultiplayer = false;
     this.currentRoom = null;
     this.myPlayerId = null;
+    this.clearSession();
     const badge = document.getElementById('header-room-badge');
     if (badge) badge.style.display = 'none';
     this.closeMultiplayerModal();
