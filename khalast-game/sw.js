@@ -1,5 +1,5 @@
-// v3: network-first (always fresh when online), cache only as offline fallback
-const CACHE_NAME = 'khalast-cache-v3';
+// v4: network-first (always fresh when online), cache only as offline fallback
+const CACHE_NAME = 'khalast-cache-v4';
 
 self.addEventListener('install', () => {
   self.skipWaiting();

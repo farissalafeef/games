@@ -483,11 +483,16 @@ body {
   transition: width 0.4s ease;
 }
 
-/* زر أوتوبيس كومبلي / STOP الكبير المثير */
+/* زر أوتوبيس كومبلي / STOP (يظهر فقط أثناء الجولة والعد التنازلي) */
 .stop-action-container {
-  display: flex;
+  display: none;
   justify-content: center;
   margin: 30px 0;
+  transition: opacity 0.3s ease;
+}
+
+.stop-action-container.active {
+  display: flex !important;
 }
 
 .btn-stop {
@@ -1388,13 +1393,18 @@ body {
     padding: 12px 14px;
   }
 
-  /* تثبيت زر قِف! خَلّصت أسفل الشاشة للجوال لسهولة الضغط أثناء اللعب */
+  /* تثبيت زر قِف! خَلّصت أسفل الشاشة للجوال - يظهر فقط أثناء الجولة والعد التنازلي */
   .stop-action-container {
+    display: none;
     position: sticky;
     bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     z-index: 999;
     padding: 8px 0;
     background: linear-gradient(180deg, transparent, rgba(11, 15, 25, 0.95) 35%);
+  }
+
+  .stop-action-container.active {
+    display: flex !important;
   }
 
   .btn-stop {

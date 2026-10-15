@@ -297,10 +297,12 @@ class EnsanHayawanGame {
     const spinBtn = document.getElementById('spin-btn');
     if (spinBtn) spinBtn.disabled = true;
 
-    // تصفير الجولة السابقة
+    // تصفير الجولة السابقة وإخفاء زر قِف حتى تبدأ الجولة فعلياً
     this.isRoundActive = false;
     this.isPanicMode = false;
     this.stoppedBy = null;
+    const stopContainer = document.getElementById('stop-action-container');
+    if (stopContainer) stopContainer.classList.remove('active');
     clearInterval(this.timerInterval);
     clearInterval(this.aiTypingInterval);
 
@@ -341,7 +343,10 @@ class EnsanHayawanGame {
       if (icon) icon.classList.remove('active');
     });
 
-    // إعداد زر قِف! خَلّصت
+    // إعداد زر قِف! خَلّصت وإظهاره فقط الآن أثناء بدء الجولة والعد التنازلي
+    const stopContainer = document.getElementById('stop-action-container');
+    if (stopContainer) stopContainer.classList.add('active');
+
     const stopBtn = document.getElementById('btn-stop');
     if (stopBtn) {
       stopBtn.disabled = false;
@@ -477,15 +482,14 @@ class EnsanHayawanGame {
     this.isPanicMode = true;
   }
 
-    // إعطاء اللاعب 10 ثوانٍ كمهلة ذعر Panic Mode
-    this.timeLeft = Math.min(this.timeLeft, 10);
-    this.isPanicMode = true;
-  }
-
   endRound(message = '') {
     this.isRoundActive = false;
     clearInterval(this.timerInterval);
     clearInterval(this.aiTypingInterval);
+
+    // إخفاء زر قِف! خَلّصت فور انتهاء الجولة
+    const stopContainer = document.getElementById('stop-action-container');
+    if (stopContainer) stopContainer.classList.remove('active');
 
     // تعطيل الحقول
     const activeCats = this.getActiveCategories();

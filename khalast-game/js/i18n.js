@@ -312,7 +312,7 @@ class I18nManager {
     }
 
     // إعادة رسم الحقول بلغة جديدة
-    if (typeof game !== 'undefined' && game.categories) {
+    if (typeof game !== 'undefined' && game && game.categories) {
       game.updateCategoriesForLanguage(lang);
     }
 
@@ -322,7 +322,7 @@ class I18nManager {
       if (phaserContainer) {
         phaserContainer.innerHTML = '';
         initPhaserWheel('phaser-wheel-container', (selectedLetter) => {
-          if (typeof game !== 'undefined') game.onLetterChosen(selectedLetter);
+          if (typeof game !== 'undefined' && game) game.onLetterChosen(selectedLetter);
         });
       }
     }
