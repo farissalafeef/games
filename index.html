@@ -27,7 +27,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   
   <!-- ورقة الأنماط -->
-  <link rel="stylesheet" href="css/style.css?v=12">
+  <link rel="stylesheet" href="css/style.css?v=14">
 </head>
 <body>
 
@@ -224,17 +224,19 @@
         </table>
       </div>
 
-      <div class="modal-actions">
-        <button id="modal-next-round-btn" class="btn-primary highlight-next-round" data-i18n="next_round_btn">
-          ⚡ جولة حماسية جديدة!
+      <div class="modal-actions-wrapper">
+        <button id="modal-next-round-btn" class="btn-primary highlight-next-round modal-btn-main" data-i18n="next_round_btn">
+          ⚡ الجولة التالية ➡️
         </button>
-        <button id="modal-share-btn" class="btn-share" title="شارك التحدي مع أصحابك">
-          📢 شارك نتيجتك وتحداهم!
-        </button>
-        <button id="modal-whatsapp-btn" class="btn-whatsapp" title="تحدي مباشر عبر واتساب">
-          💬 واتساب
-        </button>
-        <button id="modal-exit-game-btn" class="btn-secondary btn-exit" data-i18n="exit_game_btn">
+        <div class="modal-actions-row">
+          <button id="modal-share-btn" class="btn-share" data-i18n="share_btn" title="شارك التحدي مع أصحابك">
+            📢 شارك نتيجتك وتحداهم!
+          </button>
+          <button id="modal-whatsapp-btn" class="btn-whatsapp" data-i18n="whatsapp_btn" title="تحدي مباشر عبر واتساب">
+            💬 واتساب
+          </button>
+        </div>
+        <button id="modal-exit-game-btn" class="btn-secondary btn-exit modal-btn-exit" data-i18n="exit_game_btn">
           🚪 خروج للرئيسية
         </button>
       </div>
@@ -516,12 +518,12 @@
   </aside>
 
   <!-- ملفات منطق اللعبة والترجمة -->
-  <script src="js/i18n.js?v=12"></script>
-  <script src="js/dictionary.js?v=12"></script>
-  <script src="js/audio.js?v=12"></script>
-  <script src="js/phaser-effects.js?v=12"></script>
-  <script src="js/game.js?v=12"></script>
-  <script src="js/multiplayer.js?v=12"></script>
+  <script src="js/i18n.js?v=14"></script>
+  <script src="js/dictionary.js?v=14"></script>
+  <script src="js/audio.js?v=14"></script>
+  <script src="js/phaser-effects.js?v=14"></script>
+  <script src="js/game.js?v=14"></script>
+  <script src="js/multiplayer.js?v=14"></script>
 
   <!-- تسجيل Service Worker وإدارة التثبيت على الجوالات -->
   <script>

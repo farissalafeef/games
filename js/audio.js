@@ -372,10 +372,10 @@ class SoundEngine {
   }
 
   /**
-   * نطق العبارات والمؤثرات الصوتية الصوتية (عربي وإنجليزي)
-   * stop: "وقفوا خلاص!" / "Stop! Time's up!"
-   * win_first: "كفو! انت الأول!" / "Awesome! You're number one!"
-   * made_up: "ما تكدبش!" / "Don't make stuff up!"
+   * نطق العبارات والمؤثرات الصوتية باللغة الإنجليزية حصراً وبنبرة أركيد حماسية
+   * stop: "Stop! Time's up!"
+   * win_first: "Awesome! You're number one!"
+   * made_up: "Don't make stuff up!"
    */
   speakVoice(action) {
     if (this.muted) return;
@@ -385,42 +385,31 @@ class SoundEngine {
       window.speechSynthesis.cancel();
     } catch (e) {}
 
-    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
-
     const voicePhrases = {
-      stop: {
-        ar: 'وقفوا خلاص!',
-        en: "Stop! Time's up!"
-      },
-      win_first: {
-        ar: 'كفو! انت الأول!',
-        en: "Awesome! You're number one!"
-      },
-      made_up: {
-        ar: 'ما تكدبش!',
-        en: "Don't make stuff up!"
-      }
+      stop: "Stop! Time's up!",
+      win_first: "Awesome! You're number one!",
+      made_up: "Don't make stuff up!"
     };
 
-    const target = voicePhrases[action];
-    if (!target) return;
-
-    const text = isEn ? target.en : target.ar;
-    const lang = isEn ? 'en-US' : 'ar-SA';
+    const text = voicePhrases[action];
+    if (!text) return;
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang;
+    utterance.lang = 'en-US';
     utterance.volume = 1.0;
-    utterance.rate = isEn ? 1.05 : 0.95;
-    utterance.pitch = 1.15; // نبرة حماسية وتفاعلية
+    utterance.rate = 1.08; // نبرة سريعة وحماسية
+    utterance.pitch = 1.15; // نبرة أركيد مميزة
 
-    // اختيار صوت مناسب للغة إن وجد في المتصفح
+    // اختيار أفضل صوت إنجليزي متاح في المتصفح
     try {
       const voices = window.speechSynthesis.getVoices();
       if (voices && voices.length > 0) {
-        const prefix = isEn ? 'en' : 'ar';
-        const match = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(prefix));
-        if (match) utterance.voice = match;
+        // نفضل الأصوات الطبيعية أو المشهورة بجودتها العالية
+        const bestVoice = voices.find(v => 
+          v.lang && v.lang.startsWith('en') && 
+          (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Jenny') || v.name.includes('Guy'))
+        ) || voices.find(v => v.lang && v.lang.startsWith('en'));
+        if (bestVoice) utterance.voice = bestVoice;
       }
     } catch (e) {}
 

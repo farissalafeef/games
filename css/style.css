@@ -556,13 +556,73 @@ body.modal-open {
   color: #fca5a5 !important;
 }
 
-.modal-actions {
+.modal-actions,
+.modal-actions-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 22px;
+  width: 100%;
+}
+
+.modal-btn-main {
+  width: 100%;
+  padding: 14px 20px;
+  font-size: 1.15rem;
+  font-weight: 900;
+  border-radius: var(--radius-md);
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-top: 20px;
-  flex-wrap: wrap;
+  gap: 10px;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
+}
+
+.modal-actions-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.modal-actions-row .btn-share {
+  flex: 2;
+  justify-content: center;
+  padding: 11px 16px;
+  font-size: 0.95rem;
+}
+
+.modal-actions-row .btn-whatsapp {
+  flex: 1;
+  justify-content: center;
+  padding: 11px 16px;
+  font-size: 0.95rem;
+}
+
+.modal-btn-exit {
+  align-self: center;
+  margin-top: 2px;
+  font-size: 0.9rem;
+  padding: 8px 18px;
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+}
+
+.modal-btn-exit:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+@media (max-width: 440px) {
+  .modal-actions-row {
+    flex-direction: column;
+  }
+  .modal-actions-row .btn-share,
+  .modal-actions-row .btn-whatsapp {
+    width: 100%;
+  }
 }
 
 /* شريط إنجاز الجولة اللحظي والكومبو الحماسي (HUD) */
