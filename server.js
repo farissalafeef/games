@@ -331,7 +331,7 @@ wss.on('connection', (ws) => {
               letter: room.letter,
               lang: room.lang,
               round: room.round,
-              duration: payload.duration || 60
+              duration: payload.duration || 120
             }
           });
           break;

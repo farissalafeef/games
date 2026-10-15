@@ -24,8 +24,8 @@ class EnsanHayawanGame {
     this.currentLetter = 'ا';
     this.gameMode = 'vs_ai'; // 'vs_ai' | 'solo_timer' | 'free'
     this.difficulty = 'medium'; // 'easy' | 'medium' | 'hard'
-    this.timerDuration = 60; // بالثواني
-    this.timeLeft = 60;
+    this.timerDuration = 120; // بالثواني (دقيقتين افتراضياً)
+    this.timeLeft = 120;
     this.timerInterval = null;
     this.isRoundActive = false;
     this.isPanicMode = false;
@@ -164,9 +164,20 @@ class EnsanHayawanGame {
 
     const timerSelect = document.getElementById('setting-timer');
     if (timerSelect) {
+      const savedDuration = localStorage.getItem('khalast_timer_duration');
+      if (savedDuration !== null) {
+        this.timerDuration = parseInt(savedDuration, 10);
+        this.timeLeft = this.timerDuration;
+        timerSelect.value = String(this.timerDuration);
+      } else {
+        this.timerDuration = 120;
+        this.timeLeft = 120;
+        timerSelect.value = '120';
+      }
       timerSelect.addEventListener('change', (e) => {
         this.timerDuration = parseInt(e.target.value, 10);
         this.timeLeft = this.timerDuration;
+        localStorage.setItem('khalast_timer_duration', this.timerDuration);
         this.updateStatsDisplay();
       });
     }
@@ -1890,7 +1901,10 @@ class EnsanHayawanGame {
     if (roundEl) roundEl.textContent = this.round;
     if (scoreEl) scoreEl.textContent = this.totalScore;
     if (aiScoreEl) aiScoreEl.textContent = this.aiTotalScore;
-    if (timerEl && !this.isRoundActive) timerEl.textContent = `${this.timeLeft} ثانية`;
+    if (timerEl && !this.isRoundActive) {
+      const unit = (typeof i18n !== 'undefined') ? i18n.t('seconds_unit') : 'ثانية';
+      timerEl.textContent = this.timerDuration <= 0 ? '∞' : `${this.timeLeft} ${unit}`;
+    }
   }
 
   checkBodyModalState() {

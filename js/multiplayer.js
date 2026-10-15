@@ -345,7 +345,8 @@ class MultiplayerManager {
   startRoomRound() {
     if (!this.currentRoom || this.currentRoom.hostId !== this.myPlayerId) return;
     const currentLang = (typeof i18n !== 'undefined') ? i18n.currentLang : 'ar';
-    this.send('START_ROUND', { duration: 60, lang: currentLang });
+    const roundDuration = (typeof game !== 'undefined' && game.timerDuration) ? game.timerDuration : 120;
+    this.send('START_ROUND', { duration: roundDuration, lang: currentLang });
   }
 
   copyInviteLink() {

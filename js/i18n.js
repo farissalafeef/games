@@ -133,10 +133,10 @@ const TRANSLATIONS = {
     diff_medium: 'متوسط (عادي)',
     diff_hard: 'خبير (سريع ودقيق)',
     timer_label: 'مدة المؤقت لكل جولة',
-    timer_30: '30 ثانية (سريع جداً)',
-    timer_45: '45 ثانية',
-    timer_60: '60 ثانية (الموصى به)',
-    timer_90: '90 ثانية',
+    timer_30: 'نصف دقيقة (30 ثانية)',
+    timer_60: 'دقيقة واحدة (60 ثانية)',
+    timer_90: 'دقيقة ونصف (90 ثانية)',
+    timer_120: 'دقيقتين (120 ثانية - الافتراضي)',
     timer_inf: 'بدون مؤقت (غير محدود)'
   },
 
@@ -269,10 +269,10 @@ const TRANSLATIONS = {
     diff_medium: 'Medium (Balanced)',
     diff_hard: 'Expert (Fast & Accurate)',
     timer_label: 'Timer Duration per Round',
-    timer_30: '30 seconds (Super Fast)',
-    timer_45: '45 seconds',
-    timer_60: '60 seconds (Recommended)',
-    timer_90: '90 seconds',
+    timer_30: 'Half a minute (30 seconds)',
+    timer_60: '1 minute (60 seconds)',
+    timer_90: '1.5 minutes (90 seconds)',
+    timer_120: '2 minutes (120 seconds - Default)',
     timer_inf: 'No Timer (Infinite)'
   }
 };
