@@ -1,0 +1,14 @@
+{
+  "name": "khalast-game",
+  "version": "1.0.0",
+  "description": "Bilingual Word Categories Game with Online Rooms & AI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "cap:add:android": "npx @capacitor/cli add android",
+    "cap:open:android": "npx @capacitor/cli open android"
+  },
+  "dependencies": {
+    "ws": "^8.22.0"
+  }
+}

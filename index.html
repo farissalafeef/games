@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <base href="/">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>لعبة الحروف والكلمات | إنسان حيوان نبات جماد بلاد</title>
+
+  <!-- بيانات وتوافق تطبيقات الجوال (PWA & Mobile Meta) -->
+  <meta name="theme-color" content="#0b0f19">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="لعبة الحروف والكلمات">
+  <meta name="application-name" content="لعبة الحروف والكلمات">
+  <meta name="format-detection" content="telephone=no">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png">
+  
+  <!-- خطوط جوجل العربية والإنجليزية -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  
+  <!-- ورقة الأنماط -->
+  <link rel="stylesheet" href="css/style.css?v=6">
+</head>
+<body>
+
+  <!-- كانفاس الاحتفال والمفرقعات -->
+  <canvas id="confetti-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:9999;"></canvas>
+
+  <div class="game-container">
+    
+    <!-- شريط الرأس -->
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-icon">🎮</span>
+        <div class="brand-text">
+          <h1 class="brand-title"><span class="brand-main">لعبة الحروف والكلمات</span> <span class="brand-sub" data-i18n="app_title">| إنسان حيوان نبات</span></h1>
+          <p class="brand-subtitle" data-i18n="app_subtitle">التحدي الكلاسيكي بأسلوب حديث وتفاعلي</p>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <span id="header-room-badge" class="header-room-badge" style="display:none;"></span>
+        <button id="open-mp-btn" class="icon-btn highlight-btn" title="غرف الأصدقاء حتى 8 لاعبين">
+          <span>👥</span><span class="btn-lbl">غرف</span>
+        </button>
+        <button id="toggle-lang-btn" class="icon-btn highlight-lang-btn" title="Switch Language / تغيير اللغة">
+          <span>🌐</span><span class="btn-lbl">EN</span>
+        </button>
+        <button id="toggle-sound-btn" class="icon-btn" title="الصوت" id="sound-btn">
+          <span id="sound-icon-sym">🔊</span>
+        </button>
+        <button id="settings-btn" class="icon-btn" title="الإعدادات">
+          <span>⚙️</span>
+        </button>
+        <button id="header-exit-btn" class="icon-btn highlight-exit-btn" title="خروج من اللعبة" style="display:none;">
+          <span>🚪</span><span class="btn-lbl">خروج</span>
+        </button>
+        <button id="install-pwa-btn" class="icon-btn highlight-install-btn" style="display:none;" title="تثبيت التطبيق">
+          <span>📲</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- شريط الإحصائيات والمعلومات -->
+    <section class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label" data-i18n="stat_round">الجولة الحالية</div>
+        <div class="stat-val" id="stat-round">1</div>
+      </div>
+      <div class="stat-card score-card">
+        <div class="stat-label" data-i18n="stat_your_score">نقاطك</div>
+        <div class="stat-val" id="stat-score">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label" data-i18n="stat_ai_score">نقاط الخصم (AI)</div>
+        <div class="stat-val" id="stat-ai-score">0</div>
+      </div>
+      <div class="stat-card timer-card">
+        <div class="stat-label" data-i18n="stat_timer">الوقت المتبقي</div>
+        <div class="stat-val" id="stat-timer">60 ثانية</div>
+      </div>
+    </section>
+
+    <!-- قسم الحرف وعجلة فايزر التفاعلية -->
+    <section class="letter-section">
+      <div class="wheel-wrapper">
+        <div id="phaser-wheel-container"></div>
+      </div>
+
+      <div class="letter-badge-display">
+        <div class="target-letter-badge" id="target-letter-badge">؟</div>
+        <div class="letter-info">
+          <h3 id="target-letter-name" data-i18n="target_letter_ready">جاهز للبدء؟</h3>
+          <p data-i18n="target_letter_desc">اضغط الزر لتدوير عجلة الحروف وبدء التحدي</p>
+        </div>
+      </div>
+
+      <button id="spin-btn" class="spin-btn" data-i18n="spin_btn">
+        🎲 تدوير العجلة وبدء الجولة
+      </button>
+    </section>
+
+    <!-- بطاقة الخصم الذكي (AI Opponent) -->
+    <section class="ai-opponent-card" id="ai-opponent-container">
+      <div class="ai-meta">
+        <div class="ai-avatar">🤖</div>
+        <div class="ai-text">
+          <h4 data-i18n="ai_title">الخصم الذكي (كمبيوتر)</h4>
+          <span class="ai-status" id="ai-status" data-i18n="ai_waiting">في انتظار بدء الجولة...</span>
+        </div>
+      </div>
+      <div class="ai-progress-bar">
+        <div class="ai-progress-fill" id="ai-progress-fill"></div>
+      </div>
+    </section>
+
+    <!-- شبكة إدخال الكلمات والتصنيفات -->
+    <section class="categories-grid" id="categories-grid">
+      <!-- يتم حقن الحقول ديناميكياً بواسطة JavaScript -->
+    </section>
+
+    <!-- أزرار الحركة أثناء الجولة والعد التنازلي -->
+    <div class="stop-action-container" id="stop-action-container">
+      <button id="btn-forfeit" class="btn-forfeit" title="انسحاب من الجولة">
+        🏳️ انسحاب
+      </button>
+      <button id="btn-stop" class="btn-stop" disabled data-i18n="stop_btn">
+        🛑 قِف! خَلّصت
+      </button>
+    </div>
+
+  </div>
+
+  <!-- نافذة مراجعة النتائج والتقييم (Modal) -->
+  <div class="modal-backdrop" id="results-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title" data-i18n="results_title">🏁 نتائج الجولة</h2>
+        <div id="result-status-banner" class="result-status-banner" style="display:none;"></div>
+        <div id="ai-objection-banner" class="ai-objection-banner" style="display:none;"></div>
+        <p id="modal-round-message" style="color:var(--text-muted);margin-top:6px;"></p>
+        <p id="modal-round-score" style="margin-top:10px;font-size:1.15rem;color:var(--accent-gold);"></p>
+      </div>
+
+      <div class="results-table-wrapper">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th data-i18n="th_category">التصنيف</th>
+              <th data-i18n="th_your_answer">إجابتك</th>
+              <th data-i18n="th_ai_answer">إجابة الخصم</th>
+              <th data-i18n="th_points">النقاط</th>
+            </tr>
+          </thead>
+          <tbody id="results-table-body">
+            <!-- نتائج الفحص التلقائي لكل تصنيف -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-actions">
+        <button id="modal-next-round-btn" class="btn-primary" data-i18n="next_round_btn">
+          ➡️ الجولة التالية
+        </button>
+        <button id="modal-exit-game-btn" class="btn-secondary btn-exit" data-i18n="exit_game_btn">
+          🚪 خروج للرئيسية
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة الاعتراض والتحكيم بالتصويت (Voting Modal) -->
+  <div class="modal-backdrop" id="voting-modal">
+    <div class="modal-box voting-modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title" style="color:var(--accent-gold);" data-i18n="court_title">⚖️ محكمة اللعبة: جلسة اعتراض وتصويت</h2>
+        <p style="color:var(--text-muted);margin-top:4px;" data-i18n="court_subtitle">اعترض اللاعبون على الكلمة.. صوتوا الآن لحسم أمرها بالأغلبية!</p>
+      </div>
+
+      <!-- بطاقة الكلمة المعترض عليها -->
+      <div class="questioned-word-banner">
+        <div class="questioned-word-meta">
+          <span id="vote-category-name">📁 التصنيف: حيوان</span>
+          <span id="vote-letter-name">🔤 الحرف: (س)</span>
+          <span id="vote-author-name">👤 صاحب الإجابة: اللاعب</span>
+        </div>
+        <div class="questioned-word-title" id="vote-target-word">"الكلمة"</div>
+      </div>
+
+      <!-- إعلان الحكم النهائي -->
+      <div id="verdict-box" class="verdict-box">
+        <span id="verdict-text">الحكم النهائي</span>
+      </div>
+
+      <div class="voting-sections-grid">
+        <!-- الخيار 1: تصويت الحاضرين (تصويت مباشر) -->
+        <div class="vote-block">
+          <div class="vote-block-title">
+            <span data-i18n="vote_human_title">👥 تصويت الجلسة واللاعبين الحاضرين</span>
+          </div>
+          <div class="human-vote-buttons">
+            <button id="btn-human-accept" class="btn-vote-accept">
+              <span data-i18n="vote_accept_btn">👍 مقبولة وصحيحة</span>
+              <span class="vote-counter-badge" id="human-accept-count">0</span>
+            </button>
+            <button id="btn-human-reject" class="btn-vote-reject">
+              <span data-i18n="vote_reject_btn">👎 اعتراض! (من الكيس)</span>
+              <span class="vote-counter-badge" id="human-reject-count">0</span>
+            </button>
+          </div>
+          <button id="btn-resolve-human-vote" class="btn-primary" style="width:100%;font-size:1rem;padding:10px;" data-i18n="vote_resolve_btn">
+            ⚖️ حسم القرار بأغلبية الحاضرين
+          </button>
+        </div>
+
+        <!-- الخيار 2: استدعاء هيئة التحكيم الذكية -->
+        <div class="vote-block">
+          <div class="vote-block-title" style="justify-content:space-between;">
+            <span data-i18n="vote_jury_title">🤖 هيئة التحكيم الذكية (3 قضاة)</span>
+            <button id="btn-run-jury" class="icon-btn" style="font-size:0.85rem;padding:5px 12px;background:rgba(139,92,246,0.25);border-color:#8b5cf6;color:#c4b5fd;" data-i18n="vote_jury_btn">
+              ⚡ تصويت الحكام التلقائي
+            </button>
+          </div>
+
+          <div class="jury-grid" id="jury-grid">
+            <div class="jury-card" id="jury-1">
+              <div class="jury-avatar">👨‍🏫</div>
+              <div class="jury-name" data-i18n="jury_1_name">أستاذ اللغة (المعجمي)</div>
+              <div class="jury-vote" id="jury-vote-1">⏳</div>
+              <div class="jury-comment" id="jury-comment-1" data-i18n="jury_waiting">في انتظار المراجعة...</div>
+            </div>
+
+            <div class="jury-card" id="jury-2">
+              <div class="jury-avatar">🤖</div>
+              <div class="jury-name" data-i18n="jury_2_name">الخصم المنافس</div>
+              <div class="jury-vote" id="jury-vote-2">⏳</div>
+              <div class="jury-comment" id="jury-comment-2">يراقب بدقة...</div>
+            </div>
+
+            <div class="jury-card" id="jury-3">
+              <div class="jury-avatar">⚖️</div>
+              <div class="jury-name" data-i18n="jury_3_name">الحكم المحايد</div>
+              <div class="jury-vote" id="jury-vote-3">⏳</div>
+              <div class="jury-comment" id="jury-comment-3">جاهز للترجيح...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="close-voting-modal-btn" class="btn-secondary" data-i18n="close_btn">
+          إلغاء وإغلاق
+        </button>
+        <button id="apply-vote-verdict-btn" class="btn-primary" style="display:none;" data-i18n="apply_verdict_btn">
+          ✅ اعتماد النتيجة وتحديث النقاط
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة اللعب الجماعي وغرف الأصدقاء (حتى 8 لاعبين) -->
+  <div class="modal-backdrop" id="multiplayer-modal">
+    <div class="modal-box" style="max-width: 650px;">
+      <div class="modal-header">
+        <h2 class="modal-title" style="color:#10b981;" data-i18n="mp_modal_title">👥 اللعب مع الأصدقاء أونلاين</h2>
+        <p style="color:var(--text-muted);margin-top:4px;" data-i18n="mp_modal_subtitle">أنشئ غرفة وشارك الرابط أو الرمز مع أصدقائك (الحد الأقصى 8 لاعبين)</p>
+      </div>
+
+      <!-- واجهة الاختيار: إنشاء أو انضمام -->
+      <div id="mp-select-view">
+        <div class="settings-group">
+          <label data-i18n="mp_name_label">اسمك أو لقبك في اللعبة</label>
+          <input type="text" id="input-player-name" class="settings-input" placeholder="اكتب اسمك هنا..." maxlength="15" data-i18n-ph="mp_name_ph" />
+        </div>
+
+        <div class="settings-group">
+          <label data-i18n="mp_avatar_label">اختر شخصيتك (الأفاتار)</label>
+          <div class="avatar-picker-row">
+            <div class="avatar-option selected" data-avatar="🎮">🎮</div>
+            <div class="avatar-option" data-avatar="👑">👑</div>
+            <div class="avatar-option" data-avatar="🦁">🦁</div>
+            <div class="avatar-option" data-avatar="🚀">🚀</div>
+            <div class="avatar-option" data-avatar="🦊">🦊</div>
+            <div class="avatar-option" data-avatar="🎯">🎯</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px;">
+          <div style="background:rgba(255,255,255,0.04);padding:16px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.08);text-align:center;">
+            <h4 style="margin-bottom:8px;color:#ffffff;" data-i18n="mp_new_room_title">غرفة جديدة</h4>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;" data-i18n="mp_new_room_desc">أنشئ غرفة وتولَّ قيادة الجولة كمستضيف (Host)</p>
+            <button id="btn-create-room" class="btn-primary" style="width:100%;font-size:1rem;padding:10px;" data-i18n="mp_create_btn">
+              ✨ إنشاء غرفة
+            </button>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.04);padding:16px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.08);text-align:center;">
+            <h4 style="margin-bottom:8px;color:#ffffff;" data-i18n="mp_join_room_title">الانضمام لغرفة</h4>
+            <input type="text" id="input-room-code" class="settings-input" placeholder="رمز الغرفة (مثال: K7B2)" maxlength="6" style="text-align:center;font-weight:900;letter-spacing:2px;margin-bottom:8px;" data-i18n-ph="mp_code_ph" />
+            <button id="btn-join-room" class="btn-secondary" style="width:100%;font-size:1rem;padding:10px;" data-i18n="mp_join_btn">
+              🚀 انضمام بالكود
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- واجهة صالة الانتظار (Lobby) بعد إنشاء أو دخول الغرفة -->
+      <div id="mp-lobby-view" style="display:none;">
+        <div class="room-invite-box">
+          <div style="font-size:0.85rem;color:var(--text-muted);" data-i18n="mp_invite_label">رمز دعوة الغرفة الخاص بكم:</div>
+          <div class="room-code-tag" id="display-room-code">----</div>
+          <button id="btn-copy-room-link" class="icon-btn" style="margin:0 auto;background:rgba(245,158,11,0.2);border-color:#f59e0b;color:#fcd34d;" data-i18n="mp_copy_btn">
+            📋 نسخ رابط الدعوة للأصدقاء
+          </button>
+          <p style="font-size:0.8rem;color:var(--text-muted);margin-top:8px;" data-i18n="mp_share_hint">أرسل الرابط لأصدقائك للانضمام فوراً بضغطة واحدة!</p>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;">
+          <h4 style="font-size:1rem;color:#ffffff;" data-i18n="mp_seats_label">👥 مقاعد اللاعبين في الغرفة:</h4>
+          <span id="display-players-count" class="host-badge">1 / 8 لاعبين</span>
+        </div>
+
+        <!-- شبكة مقاعد اللاعبين الثمانية -->
+        <div class="lobby-players-grid" id="lobby-players-grid">
+          <!-- مقاعد اللاعبين الثمانية -->
+        </div>
+
+        <button id="btn-start-mp-game" class="btn-primary" style="width:100%;padding:14px;font-size:1.2rem;display:none;margin-top:10px;" data-i18n="mp_start_game_btn">
+          🚀 بدء اللعبة للجميع الآن!
+        </button>
+      </div>
+
+      <div class="modal-actions" style="margin-top:20px;">
+        <button id="close-mp-modal-btn" class="btn-secondary" data-i18n="close_btn">
+          إغلاق
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- درج الإعدادات الجانبي -->
+  <aside class="settings-drawer" id="settings-drawer">
+    <div class="settings-header">
+      <h3>⚙️ إعدادات اللعبة</h3>
+      <button id="close-settings-btn" class="icon-btn">✕</button>
+    </div>
+
+    <!-- قسم اختبار الأصوات -->
+    <div class="settings-group">
+      <label>🔊 اختبار المؤثرات الصوتية</label>
+      <div style="display:flex;gap:10px;flex-direction:column;margin-top:6px;">
+        <button id="test-victory-btn" class="icon-btn" style="justify-content:center;background:rgba(16,185,129,0.18);border-color:rgba(16,185,129,0.45);color:#34d399;">
+          🎺 تجربة صوت الفوز والاحتفال 🎉
+        </button>
+        <button id="test-defeat-btn" class="icon-btn" style="justify-content:center;background:rgba(244,63,94,0.18);border-color:rgba(244,63,94,0.45);color:#fb7185;">
+          🎺 تجربة صوت الخسارة (الترمبون الحزين) 😢
+        </button>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <label for="setting-game-mode">نمط اللعب</label>
+      <select id="setting-game-mode" class="settings-select">
+        <option value="vs_ai" selected>ضد الخصم الذكي (AI)</option>
+        <option value="solo_timer">تحدي الوقت الفردي (Time Attack)</option>
+        <option value="free">لعب حر بدون منافس</option>
+      </select>
+    </div>
+
+    <div class="settings-group">
+      <label for="setting-difficulty">مستوى ذكاء الخصم</label>
+      <select id="setting-difficulty" class="settings-select">
+        <option value="easy">سهل (مبتدئ)</option>
+        <option value="medium" selected>متوسط (عادي)</option>
+        <option value="hard">خبير (سريع ودقيق)</option>
+      </select>
+    </div>
+
+    <div class="settings-group">
+      <label for="setting-timer">مدة المؤقت لكل جولة</label>
+      <select id="setting-timer" class="settings-select">
+        <option value="30">30 ثانية (سريع جداً)</option>
+        <option value="45">45 ثانية</option>
+        <option value="60" selected>60 ثانية (الموصى به)</option>
+        <option value="90">90 ثانية</option>
+        <option value="0">بدون مؤقت (غير محدود)</option>
+      </select>
+    </div>
+
+    <div class="settings-group">
+      <label>قواعد احتساب النقاط:</label>
+      <ul style="font-size:0.85rem;color:var(--text-muted);padding-right:18px;line-height:1.7;">
+        <li><strong>10 نقاط:</strong> إجابة صحيحة وفريدة.</li>
+        <li><strong>5 نقاط:</strong> إجابة صحيحة متطابقة مع الخصم.</li>
+        <li><strong>+5 نقاط إضافية:</strong> لمن يضغط زر (قِف! خَلّصت) أولاً!</li>
+        <li><strong>0 نقاط:</strong> حقل فارغ أو كلمة خاطئة.</li>
+        <li>يمكنك تعديل أي كلمة يدوياً من جدول النتائج إذا كانت كلمة عامية صحيحة!</li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- ملفات منطق اللعبة والترجمة -->
+  <script src="js/i18n.js?v=6"></script>
+  <script src="js/dictionary.js?v=6"></script>
+  <script src="js/audio.js?v=6"></script>
+  <script src="js/phaser-effects.js?v=6"></script>
+  <script src="js/game.js?v=6"></script>
+  <script src="js/multiplayer.js?v=6"></script>
+
+  <!-- تسجيل Service Worker وإدارة التثبيت على الجوالات -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => {
+          console.log('SW registration note:', err);
+        });
+      });
+    }
+
+    let deferredPrompt = null;
+    const installBtn = document.getElementById('install-pwa-btn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (installBtn) {
+        installBtn.style.display = 'inline-flex';
+      }
+    });
+
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          if (outcome === 'accepted') {
+            installBtn.style.display = 'none';
+          }
+          deferredPrompt = null;
+        } else {
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+          if (isIOS) {
+            alert('لتثبيت اللعبة على الآيفون: اضغط زر المشاركة (Share ⎋) في المتصفح ثم اختر "إضافة إلى الشاشة الرئيسية ＋"');
+          } else {
+            alert('يمكنك تثبيت اللعبة عبر قائمة المتصفح: اختر "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية"');
+          }
+        }
+      });
+    }
+
+    // إظهار زر التثبيت تلقائياً على أجهزة الجوال إن لم تكن مثبتة
+    const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobileDevice && installBtn) {
+      if (!window.matchMedia('(display-mode: standalone)').matches && !window.navigator.standalone) {
+        installBtn.style.display = 'inline-flex';
+      }
+    }
+  </script>
+</body>
+</html>
