@@ -244,6 +244,12 @@ class EnsanHayawanGame {
       grid.appendChild(card);
 
       const input = card.querySelector(`#input-${cat.id}`);
+      input.addEventListener('focus', () => {
+        // تمرير الحقل بسلاسة إلى منتصف شاشة الجوال فوق الكيبورد
+        setTimeout(() => {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 180);
+      });
       input.addEventListener('input', (e) => {
         sounds.playKey();
         this.checkInputProgress();
@@ -301,6 +307,7 @@ class EnsanHayawanGame {
     this.isRoundActive = false;
     this.isPanicMode = false;
     this.stoppedBy = null;
+    document.body.classList.remove('round-in-progress');
     const stopContainer = document.getElementById('stop-action-container');
     if (stopContainer) stopContainer.classList.remove('active');
     clearInterval(this.timerInterval);
@@ -321,6 +328,7 @@ class EnsanHayawanGame {
     this.currentLetter = letter;
     this.isRoundActive = true;
     this.timeLeft = this.timerDuration;
+    document.body.classList.add('round-in-progress');
 
     // تحديث الشارة
     const badge = document.getElementById('target-letter-badge');
@@ -484,6 +492,7 @@ class EnsanHayawanGame {
 
   endRound(message = '') {
     this.isRoundActive = false;
+    document.body.classList.remove('round-in-progress');
     clearInterval(this.timerInterval);
     clearInterval(this.aiTypingInterval);
 
@@ -631,14 +640,11 @@ class EnsanHayawanGame {
         aiBanner.style.display = 'flex';
         aiBanner.innerHTML = `
           <div class="ai-objection-content">
-            <div class="ai-objection-avatar">🤖✋</div>
-            <div class="ai-objection-text">
-              <h4>${bannerTitle}</h4>
-              <p>${firstObj.remark}</p>
-            </div>
+            <div class="ai-objection-badge">⚠️ اعتراض: "${firstObj.word || ''}"</div>
+            <p class="ai-objection-remark">${firstObj.remark}</p>
           </div>
           <button class="btn-objection-action" onclick="game.startObjection('${firstObj.catId}', 'player')">
-            ${voteBtnText}
+            ⚖️ جلسة التحكيم والتصويت
           </button>
         `;
         setTimeout(() => sounds.playStopWhistle(), 450);
@@ -1036,14 +1042,11 @@ class EnsanHayawanGame {
         aiBanner.style.display = 'flex';
         aiBanner.innerHTML = `
           <div class="ai-objection-content">
-            <div class="ai-objection-avatar">🤖✋</div>
-            <div class="ai-objection-text">
-              <h4>⚠️ الخصم الذكي يعترض على إجابة أخرى!</h4>
-              <p>${nextObj.remark}</p>
-            </div>
+            <div class="ai-objection-badge">⚠️ اعتراض إضافي: "${nextObj.word || ''}"</div>
+            <p class="ai-objection-remark">${nextObj.remark}</p>
           </div>
           <button class="btn-objection-action" onclick="game.startObjection('${nextObj.catId}', 'player')">
-            ⚖️ فتح جلسة التصويت فوراً
+            ⚖️ جلسة التحكيم والتصويت
           </button>
         `;
       } else {

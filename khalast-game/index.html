@@ -27,7 +27,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   
   <!-- ورقة الأنماط -->
-  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="stylesheet" href="css/style.css?v=5">
 </head>
 <body>
 
@@ -40,28 +40,28 @@
     <header class="app-header">
       <div class="brand">
         <span class="brand-icon">🎮</span>
-        <div>
-          <h1 class="brand-title" data-i18n="app_title">إنسان حيوان نبات جماد بلاد</h1>
-          <p class="brand-subtitle" data-i18n="app_subtitle">التحدي العربي الكلاسيكي بأسلوب حديث وتفاعلي</p>
+        <div class="brand-text">
+          <h1 class="brand-title"><span class="brand-main">خَلّصت</span> <span class="brand-sub" data-i18n="app_title">| إنسان حيوان جماد</span></h1>
+          <p class="brand-subtitle" data-i18n="app_subtitle">التحدي الكلاسيكي بأسلوب حديث وتفاعلي</p>
         </div>
       </div>
 
       <div class="header-controls">
         <span id="header-room-badge" class="header-room-badge" style="display:none;"></span>
-        <button id="install-pwa-btn" class="icon-btn highlight-install-btn" style="display:none;" title="تثبيت التطبيق على الجوال">
-          📲 تثبيت
+        <button id="open-mp-btn" class="icon-btn highlight-btn" title="غرف الأصدقاء حتى 8 لاعبين">
+          <span>👥</span><span class="btn-lbl">غرف</span>
         </button>
-        <button id="toggle-lang-btn" class="icon-btn highlight-lang-btn" title="تغيير اللغة / Switch Language">
-          🌐 English
+        <button id="toggle-lang-btn" class="icon-btn highlight-lang-btn" title="Switch Language / تغيير اللغة">
+          <span>🌐</span><span class="btn-lbl">EN</span>
         </button>
-        <button id="open-mp-btn" class="icon-btn highlight-btn" title="اللعب الجماعي مع الأصدقاء حتى 8 لاعبين" data-i18n="mp_btn">
-          👥 غرف الأصدقاء (حتى 8)
+        <button id="toggle-sound-btn" class="icon-btn" title="الصوت" id="sound-btn">
+          <span id="sound-icon-sym">🔊</span>
         </button>
-        <button id="toggle-sound-btn" class="icon-btn" title="كتم / تفعيل الصوت" data-i18n="sound_on">
-          🔊 الصوت: مفعل
+        <button id="settings-btn" class="icon-btn" title="الإعدادات">
+          <span>⚙️</span>
         </button>
-        <button id="settings-btn" class="icon-btn" title="الإعدادات وقواعد اللعبة" data-i18n="settings_btn">
-          ⚙️ الإعدادات
+        <button id="install-pwa-btn" class="icon-btn highlight-install-btn" style="display:none;" title="تثبيت التطبيق">
+          <span>📲</span>
         </button>
       </div>
     </header>
@@ -144,19 +144,21 @@
         <p id="modal-round-score" style="margin-top:10px;font-size:1.15rem;color:var(--accent-gold);"></p>
       </div>
 
-      <table class="results-table">
-        <thead>
-          <tr>
-            <th data-i18n="th_category">التصنيف</th>
-            <th data-i18n="th_your_answer">إجابتك</th>
-            <th data-i18n="th_ai_answer">إجابة الخصم</th>
-            <th data-i18n="th_points">النقاط</th>
-          </tr>
-        </thead>
-        <tbody id="results-table-body">
-          <!-- نتائج الفحص التلقائي لكل تصنيف -->
-        </tbody>
-      </table>
+      <div class="results-table-wrapper">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th data-i18n="th_category">التصنيف</th>
+              <th data-i18n="th_your_answer">إجابتك</th>
+              <th data-i18n="th_ai_answer">إجابة الخصم</th>
+              <th data-i18n="th_points">النقاط</th>
+            </tr>
+          </thead>
+          <tbody id="results-table-body">
+            <!-- نتائج الفحص التلقائي لكل تصنيف -->
+          </tbody>
+        </table>
+      </div>
 
       <div class="modal-actions">
         <button id="modal-next-round-btn" class="btn-primary" data-i18n="next_round_btn">
@@ -397,12 +399,12 @@
   </aside>
 
   <!-- ملفات منطق اللعبة والترجمة -->
-  <script src="js/i18n.js?v=3"></script>
-  <script src="js/dictionary.js?v=3"></script>
-  <script src="js/audio.js?v=3"></script>
-  <script src="js/phaser-effects.js?v=3"></script>
-  <script src="js/game.js?v=3"></script>
-  <script src="js/multiplayer.js?v=3"></script>
+  <script src="js/i18n.js?v=5"></script>
+  <script src="js/dictionary.js?v=5"></script>
+  <script src="js/audio.js?v=5"></script>
+  <script src="js/phaser-effects.js?v=5"></script>
+  <script src="js/game.js?v=5"></script>
+  <script src="js/multiplayer.js?v=5"></script>
 
   <!-- تسجيل Service Worker وإدارة التثبيت على الجوالات -->
   <script>

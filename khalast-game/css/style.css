@@ -556,12 +556,14 @@ body {
   padding: 20px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s;
 }
 
 .modal-backdrop.active {
   opacity: 1;
   pointer-events: auto;
+  visibility: visible;
 }
 
 .modal-box {
@@ -641,10 +643,18 @@ body {
   color: #60a5fa;
 }
 
+.results-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 16px;
+  border-radius: var(--radius-sm);
+}
+
 .results-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 20px;
+  margin-bottom: 6px;
 }
 
 .results-table th, 
@@ -701,75 +711,70 @@ body {
   background: rgba(255, 255, 255, 0.18);
 }
 
-/* بانر اعتراض الخصم الذكي المثير */
+/* بانر اعتراض الخصم الذكي - تصميم أنيق وعصري ومريح للعين */
 .ai-objection-banner {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(185, 28, 28, 0.3));
-  border: 2px solid #ef4444;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(245, 158, 11, 0.08));
+  border: 1px solid rgba(239, 68, 68, 0.35);
   border-radius: var(--radius-md);
-  padding: 14px 18px;
-  margin: 14px 0;
+  padding: 10px 14px;
+  margin: 12px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   text-align: right;
-  box-shadow: 0 0 25px rgba(239, 68, 68, 0.3);
-  animation: objection-pulse 1.8s infinite alternate;
-}
-
-@keyframes objection-pulse {
-  from { box-shadow: 0 0 15px rgba(239, 68, 68, 0.25); border-color: #ef4444; }
-  to { box-shadow: 0 0 35px rgba(239, 68, 68, 0.55); border-color: #fca5a5; }
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
 }
 
 .ai-objection-content {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-objection-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-}
-
-.ai-objection-avatar {
-  font-size: 2.2rem;
-  animation: wave-hand 1.2s ease-in-out infinite;
-}
-
-@keyframes wave-hand {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-15deg); }
-  75% { transform: rotate(15deg); }
-}
-
-.ai-objection-text h4 {
-  font-size: 1.05rem;
-  font-weight: 800;
+  gap: 5px;
+  background: rgba(239, 68, 68, 0.2);
   color: #fca5a5;
-  margin-bottom: 4px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  width: fit-content;
 }
 
-.ai-objection-text p {
-  font-size: 0.88rem;
-  color: #ffffff;
+.ai-objection-remark {
+  font-size: 0.86rem;
+  color: #e2e8f0;
   line-height: 1.4;
+  margin: 0;
+  word-break: break-word;
 }
 
 .btn-objection-action {
   background: linear-gradient(135deg, #f59e0b, #d97706);
   color: #ffffff;
   border: none;
-  padding: 10px 18px;
+  padding: 8px 14px;
   border-radius: var(--radius-sm);
   font-family: var(--font-cairo);
-  font-weight: 800;
-  font-size: 0.95rem;
+  font-weight: 700;
+  font-size: 0.86rem;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3);
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .btn-objection-action:hover {
   filter: brightness(1.15);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .ai-objection-tag {
@@ -1075,19 +1080,23 @@ body {
   top: 0;
   left: 0;
   bottom: 0;
-  width: 320px;
+  width: min(320px, 85vw);
   background: #0f1523;
   border-right: 1px solid var(--bg-card-border);
   box-shadow: 10px 0 30px rgba(0, 0, 0, 0.6);
   z-index: 1100;
   padding: 24px;
   transform: translateX(-100%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s;
   overflow-y: auto;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .settings-drawer.open {
   transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .settings-header {
@@ -1300,7 +1309,7 @@ body {
   transform: translateY(-2px);
 }
 
-/* تجاوب الشاشات الصغيرة وتوافق الجوالات (Mobile Optimized) */
+/* تجاوب الشاشات الصغيرة وتوافق الجوالات من 5 إلى 6.5 إنش (Mobile Optimized for 5"-6.5") */
 @media (max-width: 640px) {
   * {
     -webkit-tap-highlight-color: transparent;
@@ -1313,94 +1322,287 @@ body {
   }
 
   .game-container {
-    padding: 12px 10px 80px;
-  }
-
-  .app-header {
-    flex-direction: column;
-    gap: 12px;
-    padding: 12px 14px;
-    text-align: center;
-  }
-
-  .brand {
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .header-controls {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 6px;
+    padding: 8px 8px 95px;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
-  .header-controls .icon-btn {
-    font-size: 0.8rem;
-    padding: 7px 10px;
-  }
-
-  .stats-bar {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+  /* شريط علوي فائق الرشاقة للجوال */
+  .app-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    border-radius: 14px;
     gap: 8px;
   }
 
-  .stat-card {
-    padding: 10px;
+  .brand {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
   }
 
-  .stat-val {
+  .brand-icon {
     font-size: 1.25rem;
   }
 
+  .brand-title {
+    font-size: 1.15rem;
+    font-weight: 900;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .brand-sub {
+    display: none !important;
+  }
+
+  .brand-main {
+    color: var(--accent-gold);
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+  }
+
+  .brand-subtitle {
+    display: none !important; /* إخفاء النص الطويل لتوفير مساحة رأسية ثمينة */
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 4px;
+    width: auto;
+  }
+
+  .header-controls .icon-btn {
+    font-size: 0.76rem;
+    padding: 5px 8px;
+    height: 32px;
+    border-radius: 8px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  @media (max-width: 420px) {
+    .btn-lbl {
+      display: none !important;
+    }
+    .header-controls .icon-btn {
+      padding: 5px 7px;
+      font-size: 0.95rem;
+      min-width: 32px;
+      justify-content: center;
+    }
+  }
+
+  /* شريط الإحصائيات: سطر واحد أفقي (HUD Strip) يوفر 100 بكسل */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+    padding: 4px;
+    background: rgba(15, 23, 42, 0.7);
+    border-radius: 12px;
+  }
+
+  .stat-card {
+    padding: 4px 2px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    margin-bottom: 1px;
+    white-space: nowrap;
+    color: var(--text-muted);
+  }
+
+  .stat-val {
+    font-size: 0.95rem;
+    font-weight: 800;
+  }
+
+  /* قسم العجلة والحرف */
+  .letter-section {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 16px;
+  }
+
   .wheel-wrapper {
-    max-width: 320px;
-    height: 320px;
+    width: min(250px, 68vw);
+    height: min(250px, 68vw);
+    max-width: 250px;
+    max-height: 250px;
+    margin: 0 auto 8px;
   }
 
   .wheel-wrapper::before {
-    width: 270px;
-    height: 270px;
+    display: none !important;
   }
 
   #phaser-wheel-container {
-    width: 320px;
-    height: 320px;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #phaser-wheel-container canvas {
+    width: min(250px, 68vw) !important;
+    height: min(250px, 68vw) !important;
   }
 
   .letter-badge-display {
-    gap: 12px;
+    gap: 8px;
+    margin: 4px 0 8px;
   }
 
   .target-letter-badge {
-    width: 72px;
-    height: 72px;
-    font-size: 2.8rem;
+    width: 52px;
+    height: 52px;
+    font-size: 2rem;
+    border-radius: 14px;
   }
 
-  .categories-grid {
-    grid-template-columns: 1fr;
+  .letter-info h3 {
+    font-size: 0.95rem;
+  }
+
+  .letter-info p {
+    font-size: 0.74rem;
+  }
+
+  .spin-btn {
+    width: 100%;
+    max-width: 320px;
+    font-size: 1.05rem;
+    padding: 12px 18px;
+    border-radius: 35px;
+    margin: 4px auto 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  /* أثناء الجولة والعد التنازلي: طي العجلة لتصبح شارة تركيز علوية توفر 260 بكسل للكيبورد والحقول */
+  .round-in-progress .wheel-wrapper {
+    display: none !important;
+  }
+
+  .round-in-progress .spin-btn {
+    display: none !important;
+  }
+
+  .round-in-progress .letter-section {
+    padding: 6px 12px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, rgba(30, 27, 75, 0.75), rgba(15, 23, 42, 0.9));
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.15);
+  }
+
+  .round-in-progress .letter-badge-display {
+    margin: 0;
+    justify-content: center;
     gap: 10px;
   }
 
+  .round-in-progress .target-letter-badge {
+    width: 42px;
+    height: 42px;
+    font-size: 1.7rem;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+  }
+
+  .round-in-progress .letter-info {
+    text-align: right;
+  }
+
+  .round-in-progress .letter-info p {
+    display: none;
+  }
+
+  .round-in-progress .ai-opponent-card {
+    padding: 5px 10px;
+    margin-bottom: 8px;
+  }
+
+  .round-in-progress .ai-avatar {
+    font-size: 1.15rem;
+  }
+
+  .round-in-progress .ai-text h4 {
+    font-size: 0.8rem;
+  }
+
+  .round-in-progress .ai-status {
+    font-size: 0.72rem;
+  }
+
+  /* حقول التصنيفات وإدخال الكلمات للجوال */
+  .categories-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
   .category-card {
-    padding: 12px 14px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    background: rgba(19, 24, 38, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .category-header {
+    margin-bottom: 4px;
+  }
+
+  .category-title {
+    font-size: 0.86rem;
+    font-weight: 700;
+    gap: 6px;
+  }
+
+  .category-icon {
+    font-size: 1.15rem;
   }
 
   .category-input {
-    font-size: 1.05rem;
-    padding: 12px 14px;
+    font-size: 16px !important; /* إلزامي 16px لمنع متصفح سفاري على الآيفون من عمل زوم مزعج */
+    height: 44px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 600;
   }
 
-  /* تثبيت زر قِف! خَلّصت أسفل الشاشة للجوال - يظهر فقط أثناء الجولة والعد التنازلي */
+  /* زر قِف! خَلّصت العائم في أسفل الشاشة للجوال */
   .stop-action-container {
     display: none;
-    position: sticky;
+    position: fixed;
+    left: 10px;
+    right: 10px;
     bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     z-index: 999;
-    padding: 8px 0;
-    background: linear-gradient(180deg, transparent, rgba(11, 15, 25, 0.95) 35%);
+    padding: 0;
+    margin: 0;
+    background: transparent;
   }
 
   .stop-action-container.active {
@@ -1409,28 +1611,174 @@ body {
 
   .btn-stop {
     width: 100%;
-    max-width: 420px;
+    max-width: 100%;
+    height: 52px;
     font-size: 1.25rem;
-    padding: 15px 20px;
-    box-shadow: 0 10px 25px rgba(239, 68, 68, 0.55);
+    padding: 0;
+    border-radius: 35px;
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.7);
+    justify-content: center;
   }
 
-  /* النوافذ المنبثقة للجوال */
+  /* النوافذ المنبثقة للجوال - تجاوب تام وبدون أي تكبير للشاشة */
+  .modal-backdrop {
+    padding: 10px 8px;
+    align-items: center;
+  }
+
   .modal-box {
-    width: 95%;
+    width: 100%;
+    max-width: 100%;
     max-height: 88vh;
-    padding: 18px 14px;
+    padding: 14px 12px;
+    border-radius: var(--radius-md);
     overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
+  .modal-header {
+    margin-bottom: 14px;
+  }
+
+  .modal-title {
+    font-size: 1.3rem;
+  }
+
+  /* تحسين جدول النتائج للجوال */
+  .results-table-wrapper {
+    margin-bottom: 12px;
+    border-radius: var(--radius-sm);
+  }
+
+  .results-table {
+    min-width: 290px;
+    margin-bottom: 0;
   }
 
   .results-table th,
   .results-table td {
-    padding: 8px 6px;
+    padding: 7px 5px;
+    font-size: 0.8rem;
+  }
+
+  .manual-toggle-btn {
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    margin-right: 2px;
+  }
+
+  /* تحسين بطاقة نافذة التصويت والتحكيم للجوال */
+  .voting-modal-box {
+    max-width: 100%;
+    padding: 14px 10px;
+    box-sizing: border-box;
+  }
+
+  .questioned-word-banner {
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    border-radius: var(--radius-sm);
+  }
+
+  .questioned-word-meta {
+    font-size: 0.78rem;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .questioned-word-title {
+    font-size: 1.4rem;
+    margin: 4px 0;
+  }
+
+  .voting-sections-grid {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .vote-block {
+    padding: 9px 10px;
+    border-radius: var(--radius-sm);
+  }
+
+  .vote-block-title {
     font-size: 0.85rem;
+    margin-bottom: 8px;
   }
 
   .human-vote-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .btn-vote-accept,
+  .btn-vote-reject {
+    padding: 7px 4px;
+    font-size: 0.82rem;
+    gap: 2px;
+  }
+
+  .vote-counter-badge {
+    font-size: 1.1rem;
+  }
+
+  #btn-resolve-human-vote {
+    padding: 8px !important;
+    font-size: 0.84rem !important;
+  }
+
+  /* تحويل شبكة الحكام إلى قائمة أفقية مدمجة بدل الأعمدة المتزاحمة */
+  .jury-grid {
     grid-template-columns: 1fr;
+    gap: 5px;
+    margin-top: 6px;
+  }
+
+  .jury-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    gap: 8px;
+    text-align: right;
+  }
+
+  .jury-avatar {
+    font-size: 1.1rem;
+    margin-bottom: 0;
+  }
+
+  .jury-name {
+    font-size: 0.78rem;
+    flex: 1;
+    text-align: right;
+  }
+
+  .jury-vote {
+    font-size: 1rem;
+  }
+
+  .jury-comment {
+    display: none; /* إخفاء التعليق الطويل لمنع تضخم النافذة على شاشات الجوال */
+  }
+
+  #btn-run-jury {
+    font-size: 0.75rem !important;
+    padding: 3px 8px !important;
+  }
+
+  .modal-actions {
+    margin-top: 10px;
+    gap: 8px;
+  }
+
+  .modal-actions button {
+    padding: 10px;
+    font-size: 0.95rem;
   }
 }
 
