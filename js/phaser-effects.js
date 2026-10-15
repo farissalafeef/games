@@ -150,7 +150,7 @@ const LightWheel = {
   },
 
   applyRotation() {
-    if (this.canvas) this.canvas.style.transform = `rotate(${this.angle}deg)`;
+    if (this.canvas) this.canvas.style.transform = `rotate3d(0, 0, 1, ${this.angle}deg) translateZ(0)`;
   },
 
   cancelSpin() {

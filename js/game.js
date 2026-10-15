@@ -42,12 +42,26 @@ class EnsanHayawanGame {
     this.aiObjections = [];
 
     this.aiTypingInterval = null;
+
+    // محرك التقدم والخبرة والتلميحات الذكية (Retention Engine)
+    this.playerXP = parseInt(localStorage.getItem('khalast_xp') || '0', 10);
+    this.playerLevel = parseInt(localStorage.getItem('khalast_level') || '1', 10);
+    this.hintsRemaining = 3;
+    this.activeModifier = null;
+    this.aiBubbleTimeout = null;
+
+    // سلسلة الأيام والأوسمة
+    this.dailyStreak = parseInt(localStorage.getItem('khalast_daily_streak') || '1', 10);
+    this.unlockedAchievements = JSON.parse(localStorage.getItem('khalast_achievements') || '[]');
   }
 
   init() {
     const initialLang = (typeof i18n !== 'undefined') ? i18n.currentLang : 'ar';
     this.updateCategoriesForLanguage(initialLang);
     this.updateStatsDisplay();
+    this.updatePlayerProfileUI();
+    this.initDailyStreak();
+    this.renderAchievementsList();
     this.bindEvents();
 
     // تشغيل فايزر للعجلة
@@ -67,6 +81,7 @@ class EnsanHayawanGame {
     }
     this.renderCategoryInputs();
     this.updateStatsDisplay();
+    this.updatePlayerProfileUI();
 
     const stopBtn = document.getElementById('btn-stop');
     if (stopBtn && !this.isRoundActive) {
@@ -115,12 +130,16 @@ class EnsanHayawanGame {
 
     if (settingsBtn && settingsDrawer) {
       settingsBtn.addEventListener('click', () => {
+        this.closeStreakModal();
+        this.closeAchievementsModal();
         settingsDrawer.classList.toggle('open');
+        this.checkBodyModalState();
       });
     }
     if (closeSettingsBtn && settingsDrawer) {
       closeSettingsBtn.addEventListener('click', () => {
         settingsDrawer.classList.remove('open');
+        this.checkBodyModalState();
       });
     }
 
@@ -223,6 +242,44 @@ class EnsanHayawanGame {
     if (btnApplyVerdict) {
       btnApplyVerdict.addEventListener('click', () => this.applyVoteVerdict());
     }
+
+    // زر مشاركة التحدي الفيروسي
+    const modalShareBtn = document.getElementById('modal-share-btn');
+    if (modalShareBtn) {
+      modalShareBtn.addEventListener('click', () => this.shareChallenge());
+    }
+
+    // زر التلميح السحري (Hint Button)
+    const btnHint = document.getElementById('btn-hint');
+    if (btnHint) {
+      btnHint.addEventListener('click', () => this.useMagicHint());
+    }
+
+    // زر نافذة سلسلة الأيام
+    const btnStreak = document.getElementById('streak-badge-btn');
+    if (btnStreak) {
+      btnStreak.addEventListener('click', () => this.openStreakModal());
+    }
+    const btnCloseStreak = document.getElementById('close-streak-btn');
+    if (btnCloseStreak) {
+      btnCloseStreak.addEventListener('click', () => this.closeStreakModal());
+    }
+
+    // زر نافذة الأوسمة والإنجازات
+    const btnAchievements = document.getElementById('achievements-btn');
+    if (btnAchievements) {
+      btnAchievements.addEventListener('click', () => this.openAchievementsModal());
+    }
+    const btnCloseAchievements = document.getElementById('close-achievements-btn');
+    if (btnCloseAchievements) {
+      btnCloseAchievements.addEventListener('click', () => this.closeAchievementsModal());
+    }
+
+    // زر مشاركة التحدي عبر واتساب
+    const btnWhatsAppModal = document.getElementById('modal-whatsapp-btn');
+    if (btnWhatsAppModal) {
+      btnWhatsAppModal.addEventListener('click', () => this.shareWhatsApp());
+    }
   }
 
   renderCategoryInputs() {
@@ -266,9 +323,21 @@ class EnsanHayawanGame {
           card.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 180);
       });
+      let prevFilled = false;
       input.addEventListener('input', (e) => {
         sounds.playKey();
-        this.checkInputProgress();
+        const hasText = input.value.trim().length > 0;
+        if (hasText && !prevFilled) {
+          prevFilled = true;
+          try { if (navigator.vibrate) navigator.vibrate(25); } catch (err) {}
+          const newFilledCount = this.checkInputProgress();
+          sounds.playComboChime(newFilledCount);
+        } else if (!hasText && prevFilled) {
+          prevFilled = false;
+          this.checkInputProgress();
+        } else {
+          this.checkInputProgress();
+        }
       });
 
       // تنقل فائق السرعة عبر لوحة مفاتيح الجوال عند ضغط التالي (Next)
@@ -291,20 +360,42 @@ class EnsanHayawanGame {
   checkInputProgress() {
     const activeCats = this.getActiveCategories();
     let filledCount = 0;
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
 
     activeCats.forEach(cat => {
       const input = document.getElementById(`input-${cat.id}`);
       const icon = document.getElementById(`status-icon-${cat.id}`);
+      const card = input ? input.closest('.category-card') : null;
+
       if (input && input.value.trim().length > 0) {
         filledCount++;
         if (icon) {
-          icon.textContent = '✍️';
+          icon.textContent = '✅';
           icon.classList.add('active');
         }
+        if (card) card.classList.add('completed');
       } else {
-        if (icon) icon.classList.remove('active');
+        if (icon) {
+          icon.textContent = '⚪';
+          icon.classList.remove('active');
+        }
+        if (card) card.classList.remove('completed');
       }
     });
+
+    // تحديث شريط التقدم اللحظي والكومبو
+    const progressCount = document.getElementById('hud-progress-count');
+    const progressFill = document.getElementById('hud-progress-fill');
+    const streakText = document.getElementById('hud-streak-text');
+
+    if (progressCount) progressCount.textContent = `${filledCount} / ${activeCats.length}`;
+    if (progressFill) {
+      const pct = (filledCount / activeCats.length) * 100;
+      progressFill.style.width = `${pct}%`;
+    }
+    if (streakText) {
+      streakText.textContent = isEn ? `${filledCount} Streak` : `${filledCount} متتالي`;
+    }
 
     const stopBtn = document.getElementById('btn-stop');
     if (stopBtn && this.isRoundActive) {
@@ -313,6 +404,8 @@ class EnsanHayawanGame {
         stopBtn.classList.add('ready-pulse');
       }
     }
+
+    return filledCount;
   }
 
   startNewRound() {
@@ -329,6 +422,14 @@ class EnsanHayawanGame {
     clearInterval(this.timerInterval);
     clearInterval(this.aiTypingInterval);
 
+    // إعادة ضبط التلميحات السحرية ومعدّل الجولة الغامض
+    this.hintsRemaining = 3;
+    const hintBadge = document.getElementById('hint-count-badge');
+    if (hintBadge) hintBadge.textContent = '3';
+    const hintBtn = document.getElementById('btn-hint');
+    if (hintBtn) hintBtn.disabled = false;
+    this.rollMysteryModifier();
+
     // اختيار حرف عشوائي بناءً على لغة اللعبة
     const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
     const letterPool = isEn ? ENGLISH_LETTERS : ARABIC_LETTERS;
@@ -343,7 +444,9 @@ class EnsanHayawanGame {
   onLetterChosen(letter) {
     this.currentLetter = letter;
     this.isRoundActive = true;
-    this.timeLeft = this.timerDuration;
+    if (this.activeModifier !== 'blitz_speed') {
+      this.timeLeft = this.timerDuration;
+    }
     document.body.classList.add('round-in-progress');
 
     // تحديث الشارة
@@ -462,6 +565,12 @@ class EnsanHayawanGame {
     }
     if (aiFill) aiFill.style.width = '0%';
 
+    const modifierBanner = document.getElementById('mystery-modifier-banner');
+    if (modifierBanner) modifierBanner.style.display = 'none';
+
+    const aiBubble = document.getElementById('ai-bubble');
+    if (aiBubble) aiBubble.style.display = 'none';
+
     this.updateStatsDisplay();
 
     // إذا كان في غرفة أونلاين: مغادرة الغرفة
@@ -485,11 +594,14 @@ class EnsanHayawanGame {
       this.timeLeft--;
       if (timerVal) timerVal.textContent = `${this.timeLeft} ${secondsUnit}`;
 
+      const timerCard = document.querySelector('.timer-card');
       if (this.timeLeft <= 10) {
         if (timerVal) timerVal.classList.add('timer-critical');
-        sounds.playTick();
+        if (timerCard) timerCard.classList.add('panic');
+        sounds.playHeartbeat();
       } else {
         if (timerVal) timerVal.classList.remove('timer-critical');
+        if (timerCard) timerCard.classList.remove('panic');
       }
 
       if (this.timeLeft <= 0) {
@@ -520,6 +632,12 @@ class EnsanHayawanGame {
     let filledSoFar = 0;
     const typingDelay = this.difficulty === 'hard' ? 3800 : (this.difficulty === 'medium' ? 5500 : 7500);
 
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    const startPhrases = isEn
+      ? ['Ready for action! ⚡', 'Show me your speed! 🚀', 'Fun letter today! 🎲']
+      : ['أنا جاهز ومتحمس! 🔥', 'وريني سرعتك اليوم! ⚡', 'حرف جميل وتحدي قوي! 🎲'];
+    this.showAiBubble(startPhrases[Math.floor(Math.random() * startPhrases.length)]);
+
     this.aiTypingInterval = setInterval(() => {
       if (!this.isRoundActive) {
         clearInterval(this.aiTypingInterval);
@@ -537,6 +655,12 @@ class EnsanHayawanGame {
         const pct = (filledSoFar / activeCats.length) * 100;
         if (aiProgressFill) aiProgressFill.style.width = `${pct}%`;
 
+        if (filledSoFar === 2) {
+          this.showAiBubble(isEn ? 'Got two categories! 🏃' : 'كتبت إجابتين بالتمام! 🏃');
+        } else if (filledSoFar === 4) {
+          this.showAiBubble(isEn ? 'Almost done! ⏳' : 'قربت أخلص وأضغط قِف! ⏳');
+        }
+
         // إذا أنهى الكمبيوتر كل الحقول، يضغط STOP!
         if (filledSoFar === activeCats.length) {
           clearInterval(this.aiTypingInterval);
@@ -551,7 +675,15 @@ class EnsanHayawanGame {
     if (!this.isRoundActive) return;
 
     sounds.playStopWhistle();
+    setTimeout(() => sounds.speakVoice('stop'), 120);
     this.stoppedBy = 'player';
+
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    this.showAiBubble(isEn ? 'Whoa, you beat me to STOP! 🛑' : 'يا ساتر سبقتني بالزر! 🛑');
+
+    if (this.timeLeft >= 35) {
+      this.unlockAchievement('fast_stop');
+    }
 
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       try { navigator.vibrate([60, 40, 120]); } catch (e) {}
@@ -579,7 +711,11 @@ class EnsanHayawanGame {
     if (!this.isRoundActive || this.stoppedBy) return;
 
     sounds.playStopWhistle();
+    setTimeout(() => sounds.speakVoice('stop'), 120);
     this.stoppedBy = 'ai';
+
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    this.showAiBubble(isEn ? 'STOP! Finished first! 😎' : 'قف! خلصت قبلك 😎');
 
     const stopBtn = document.getElementById('btn-stop');
     if (stopBtn) {
@@ -725,6 +861,12 @@ class EnsanHayawanGame {
   }
 
   openResultsModal(roundTotal, aiRoundTotal, message) {
+    this.closeStreakModal();
+    this.closeAchievementsModal();
+    const settingsDrawer = document.getElementById('settings-drawer');
+    if (settingsDrawer) settingsDrawer.classList.remove('open');
+    if (typeof multiplayer !== 'undefined' && multiplayer.closeMultiplayerModal) multiplayer.closeMultiplayerModal();
+
     const modal = document.getElementById('results-modal');
     const modalMessage = document.getElementById('modal-round-message');
 
@@ -758,6 +900,7 @@ class EnsanHayawanGame {
     this.updateResultsSummary();
 
     modal.classList.add('active');
+    this.checkBodyModalState();
 
     // تشغيل المؤثر الصوتي للنتيجة الأولية
     const roundP = this.reviewResults.reduce((s, r) => s + (r.pPoints || 0), 0) + (this.stoppedBy === 'player' ? 5 : 0);
@@ -767,6 +910,7 @@ class EnsanHayawanGame {
       if (roundP > roundAi) {
         sounds.playCelebratoryVictory();
         this.fireConfetti();
+        setTimeout(() => sounds.speakVoice('win_first'), 500);
       } else if (roundP < roundAi) {
         sounds.playDefeat();
       } else {
@@ -776,6 +920,7 @@ class EnsanHayawanGame {
       if (roundP >= 30) {
         sounds.playCelebratoryVictory();
         this.fireConfetti();
+        setTimeout(() => sounds.speakVoice('win_first'), 500);
       } else {
         sounds.playDefeat();
       }
@@ -831,9 +976,6 @@ class EnsanHayawanGame {
           <span class="score-badge ${badgeClass}" id="badge-${res.catId}">
             ${res.pPoints} ${pointsUnit}
           </span>
-          <button class="manual-toggle-btn" title="تعديل النقاط" onclick="game.toggleManualOverride('${res.catId}')">
-            ${editBtnText}
-          </button>
         </td>
       `;
       tableBody.appendChild(tr);
@@ -847,12 +989,39 @@ class EnsanHayawanGame {
     let roundP = this.reviewResults.reduce((s, r) => s + (r.pPoints || 0), 0);
     if (this.stoppedBy === 'player') roundP += 5;
     let roundAi = this.reviewResults.reduce((s, r) => s + (r.aiPoints || 0), 0);
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+
+    // حساب مضاعفات ومكافآت الجولة الغامضة ونقاط الخبرة المستمرة
+    let bonusText = '';
+    let earnedXP = roundP;
+    if (this.stoppedBy === 'player') earnedXP += 10;
+
+    if (this.activeModifier === 'double_points') {
+      roundP *= 2;
+      earnedXP *= 2;
+      bonusText = isEn ? ' (⚡ 2X Active!)' : ' (⚡ نقاط مضاعفة 2X!)';
+    } else if (this.activeModifier === 'blitz_speed' && this.timeLeft > 0) {
+      earnedXP += 15;
+      bonusText = isEn ? ' (⏱️ Blitz Bonus +15 XP)' : ' (⏱️ بونص سرعة البرق +15 خبرة)';
+    } else if (this.activeModifier === 'perfect_seven') {
+      const filledAll = this.reviewResults.length >= 7 && this.reviewResults.every(r => r.playerWord && r.pPoints > 0);
+      if (filledAll) {
+        roundP += 20;
+        earnedXP += 25;
+        bonusText = isEn ? ' (🎯 Perfect 7 Bonus +20 pts)' : ' (🎯 بونص الكمال +20 نقطة)';
+      }
+    }
+
+    // إضافة نقاط الخبرة للملف الدائم للاعب
+    this.addXP(earnedXP);
 
     if (modalScore) {
       if (typeof i18n !== 'undefined') {
-        modalScore.innerHTML = i18n.t('round_score_summary', { pScore: roundP, aiScore: roundAi });
+        modalScore.innerHTML = i18n.t('round_score_summary', { pScore: roundP, aiScore: roundAi }) +
+          `<br><span style="font-size:0.95rem;color:#10b981;font-weight:700;">✨ +${earnedXP} XP خبرة${bonusText}</span>`;
       } else {
-        modalScore.innerHTML = `مجموع نقاطك في هذه الجولة: <strong>${roundP}</strong> | نقاط الخصم: <strong>${roundAi}</strong>`;
+        modalScore.innerHTML = `مجموع نقاطك في هذه الجولة: <strong>${roundP}</strong> | نقاط الخصم: <strong>${roundAi}</strong>` +
+          `<br><span style="font-size:0.95rem;color:#10b981;font-weight:700;">✨ +${earnedXP} XP خبرة${bonusText}</span>`;
       }
     }
 
@@ -885,6 +1054,520 @@ class EnsanHayawanGame {
       statusBanner.className = `result-status-banner ${bannerClass}`;
       statusBanner.textContent = bannerText;
     }
+
+    // فحص وتفعيل إنجازات الجولة والأوسمة التراكمية
+    if (this.reviewResults.length >= 7 && this.reviewResults.every(r => r.pPoints === 10)) {
+      this.unlockAchievement('perfect_70');
+    }
+
+    const validCount = this.reviewResults.filter(r => r.pPoints > 0).length;
+    let totalWords = parseInt(localStorage.getItem('khalast_words_count') || '0', 10) + validCount;
+    localStorage.setItem('khalast_words_count', totalWords);
+    if (totalWords >= 25) {
+      this.unlockAchievement('words_collector');
+    }
+
+    if (this.gameMode === 'vs_ai') {
+      if (roundP > roundAi) {
+        if (this.hintsRemaining === 3) {
+          this.unlockAchievement('flawless_no_hint');
+        }
+        let winStreak = parseInt(localStorage.getItem('khalast_win_streak') || '0', 10) + 1;
+        localStorage.setItem('khalast_win_streak', winStreak);
+        if (winStreak >= 3) {
+          this.unlockAchievement('undefeated_3');
+        }
+      } else if (roundP < roundAi) {
+        localStorage.setItem('khalast_win_streak', '0');
+      }
+    }
+
+    // حساب وعرض وسام اللقب الفخري (Dopamine Rank Card)
+    const rankCard = document.getElementById('player-rank-card');
+    const rankIcon = document.getElementById('rank-icon');
+    const rankTitle = document.getElementById('rank-title');
+    const rankDesc = document.getElementById('rank-desc');
+
+    if (rankCard && rankIcon && rankTitle && rankDesc) {
+      if (roundP >= 55) {
+        rankIcon.textContent = '👑';
+        rankTitle.textContent = isEn ? 'Master of Words' : 'سلطان الكلمات الأسطوري';
+        rankDesc.textContent = isEn ? 'Flawless performance, lightning speed!' : 'أداء بطولي استثنائي وسرعة بديهة خيالية!';
+      } else if (roundP >= 40) {
+        rankIcon.textContent = '⚡';
+        rankTitle.textContent = isEn ? 'Letter Falcon' : 'صقر الحروف الذهبي';
+        rankDesc.textContent = isEn ? 'Brilliant answers and sharp reflexes!' : 'سرعة بديهة مذهلة وكلمات فصيحة قوية!';
+      } else if (roundP >= 20) {
+        rankIcon.textContent = '🎯';
+        rankTitle.textContent = isEn ? 'Word Knight' : 'فارس التحدي الذكي';
+        rankDesc.textContent = isEn ? 'Great score, solid competitive spirit!' : 'إجابات ذكية ومنافسة شرسة تستحق التقدير!';
+      } else {
+        rankIcon.textContent = '🌟';
+        rankTitle.textContent = isEn ? 'Rising Star' : 'نجم واعد في الميدان';
+        rankDesc.textContent = isEn ? 'Good effort! Next round will be yours!' : 'محاولة جيدة، والجولة القادمة ستكون لك!';
+      }
+    }
+  }
+
+  shareChallenge() {
+    let roundP = this.reviewResults.reduce((s, r) => s + (r.pPoints || 0), 0);
+    if (this.stoppedBy === 'player') roundP += 5;
+    const letter = this.currentLetter || '؟';
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    const url = window.location.href.split('#')[0];
+
+    const shareTitle = isEn ? 'Word Challenge Game' : 'تحدي لعبة الحروف والكلمات';
+    const shareText = isEn
+      ? `🔥 Can you beat my score? I just scored ${roundP} points on letter (${letter}) in Words Game! Play now: ${url}`
+      : `🔥 هل تقدر تفوز علي؟ حققت ${roundP} نقطة في لعبة الحروف والكلمات بحرف (${letter})! ادخل وتحداهم الآن: ${url}`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url: url
+      }).catch(() => {});
+    } else {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(shareText).then(() => {
+          this.showToast(isEn ? 'Challenge link copied! Share with friends 🚀' : 'تم نسخ نص ورابط التحدي! شاركه الآن مع أصحابك 🚀');
+        });
+      } else {
+        this.showToast(isEn ? 'Share with your friends: ' + url : 'شارك الرابط مع أصدقائك: ' + url);
+      }
+    }
+  }
+
+  showToast(message) {
+    let toast = document.getElementById('game-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'game-toast';
+      toast.className = 'game-toast';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+    }, 3200);
+  }
+
+  getLevelConfig(level) {
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    const ranks = [
+      { lvl: 1, maxXP: 150, titleAr: 'مبتدئ الحروف 🌟', titleEn: 'Word Novice 🌟' },
+      { lvl: 2, maxXP: 380, titleAr: 'هاوي الفصاحة 🎯', titleEn: 'Word Explorer 🎯' },
+      { lvl: 3, maxXP: 750, titleAr: 'فارس الكلمات ⚔️', titleEn: 'Word Knight ⚔️' },
+      { lvl: 4, maxXP: 1350, titleAr: 'صقر الحروف الذهبي 🦅', titleEn: 'Letter Falcon 🦅' },
+      { lvl: 5, maxXP: 2200, titleAr: 'أستاذ المعاجم 🎓', titleEn: 'Dictionary Master 🎓' },
+      { lvl: 6, maxXP: 3500, titleAr: 'سلطان الحروف الأسطوري 👑', titleEn: 'Grand Word Emperor 👑' },
+      { lvl: 7, maxXP: 5500, titleAr: 'حاكم لغة الضاد الخالد 🏆', titleEn: 'Immortal Word Legend 🏆' }
+    ];
+    return ranks.find(r => r.lvl === level) || ranks[ranks.length - 1];
+  }
+
+  updatePlayerProfileUI() {
+    const levelBadge = document.getElementById('profile-level-badge');
+    const rankName = document.getElementById('profile-rank-name');
+    const xpCounter = document.getElementById('profile-xp-counter');
+    const xpFill = document.getElementById('profile-xp-fill');
+
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    const cfg = this.getLevelConfig(this.playerLevel);
+    const rankTitle = isEn ? cfg.titleEn : cfg.titleAr;
+
+    let prevMax = 0;
+    if (this.playerLevel > 1) {
+      const prevCfg = this.getLevelConfig(this.playerLevel - 1);
+      prevMax = prevCfg.maxXP;
+    }
+    const xpInBracket = Math.max(0, this.playerXP - prevMax);
+    const bracketSize = Math.max(1, cfg.maxXP - prevMax);
+    const pct = Math.min(100, Math.floor((xpInBracket / bracketSize) * 100));
+
+    if (levelBadge) levelBadge.textContent = `Lv. ${this.playerLevel}`;
+    if (rankName) rankName.textContent = rankTitle;
+    if (xpCounter) xpCounter.textContent = `${this.playerXP} / ${cfg.maxXP} XP`;
+    if (xpFill) xpFill.style.width = `${pct}%`;
+  }
+
+  addXP(amount) {
+    if (amount <= 0) return;
+    const oldLevel = this.playerLevel;
+    this.playerXP += amount;
+
+    while (this.playerLevel < 7) {
+      const currentCfg = this.getLevelConfig(this.playerLevel);
+      if (this.playerXP >= currentCfg.maxXP) {
+        this.playerLevel++;
+      } else {
+        break;
+      }
+    }
+
+    try {
+      localStorage.setItem('khalast_xp', this.playerXP);
+      localStorage.setItem('khalast_level', this.playerLevel);
+    } catch (e) {}
+
+    this.updatePlayerProfileUI();
+
+    if (this.playerLevel > oldLevel) {
+      const newCfg = this.getLevelConfig(this.playerLevel);
+      const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+      const rankTitle = isEn ? newCfg.titleEn : newCfg.titleAr;
+      const toastMsg = (typeof i18n !== 'undefined')
+        ? i18n.t('level_up_toast', { level: this.playerLevel, rank: rankTitle })
+        : `🎉 كفو! ترقيت إلى المستوى ${this.playerLevel}: ${rankTitle}! 🏆`;
+
+      sounds.playCelebratoryVictory();
+      this.fireConfetti();
+      this.showToast(toastMsg);
+    }
+  }
+
+  useMagicHint() {
+    if (!this.isRoundActive) return;
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+
+    if (this.hintsRemaining <= 0) {
+      this.showToast(isEn ? 'No hints left in this round!' : 'لا توجد تلميحات متبقية في هذه الجولة!');
+      return;
+    }
+
+    const activeCats = this.getActiveCategories();
+    // ابحث عن أول حقل فارغ
+    let targetCat = activeCats.find(cat => {
+      const input = document.getElementById(`input-${cat.id}`);
+      return !input || !input.value.trim();
+    });
+
+    if (!targetCat) targetCat = activeCats[0];
+    if (!targetCat) return;
+
+    const input = document.getElementById(`input-${targetCat.id}`);
+    if (!input) return;
+
+    let candidateWord = '';
+    if (isEn && typeof ENGLISH_DICTIONARY !== 'undefined') {
+      const list = ENGLISH_DICTIONARY[this.currentLetter]?.[targetCat.id];
+      if (list && list.length > 0) candidateWord = list[Math.floor(Math.random() * list.length)];
+    } else if (typeof ARABIC_DICTIONARY !== 'undefined') {
+      const list = ARABIC_DICTIONARY[this.currentLetter]?.[targetCat.id];
+      if (list && list.length > 0) candidateWord = list[Math.floor(Math.random() * list.length)];
+    }
+
+    this.hintsRemaining--;
+    const hintBadge = document.getElementById('hint-count-badge');
+    if (hintBadge) hintBadge.textContent = this.hintsRemaining;
+
+    const hintBtn = document.getElementById('btn-hint');
+    if (hintBtn && this.hintsRemaining <= 0) {
+      hintBtn.disabled = true;
+    }
+
+    sounds.playMagicSparkle();
+
+    if (candidateWord) {
+      const prefix = candidateWord.substring(0, 2);
+      input.placeholder = `💡 تلميح: يبدأ بـ (${prefix}...)`;
+      input.classList.add('hint-pulse');
+      setTimeout(() => input.classList.remove('hint-pulse'), 1500);
+      input.focus();
+
+      const catLabel = (typeof i18n !== 'undefined') ? i18n.t(`cat_${targetCat.id}`) : targetCat.label;
+      const toastMsg = (typeof i18n !== 'undefined')
+        ? i18n.t('hint_toast', { cat: catLabel, prefix: prefix })
+        : `💡 تلميح لتصنيف (${catLabel}): كلمة تبدأ بـ (${prefix}...)`;
+      this.showToast(toastMsg);
+    } else {
+      this.showToast(isEn ? 'Try thinking of a creative word!' : '💡 فكّر بكلمة تبدأ بالحرف!');
+    }
+  }
+
+  showAiBubble(text) {
+    const bubble = document.getElementById('ai-bubble');
+    if (!bubble || this.gameMode !== 'vs_ai') return;
+    bubble.textContent = text;
+    bubble.style.display = 'block';
+    clearTimeout(this.aiBubbleTimeout);
+    this.aiBubbleTimeout = setTimeout(() => {
+      bubble.style.display = 'none';
+    }, 2800);
+  }
+
+  rollMysteryModifier() {
+    const banner = document.getElementById('mystery-modifier-banner');
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+
+    // فرصة 45% لظهور معدّل جولة مفاجئ لكسر الرتابة والملل
+    if (Math.random() < 0.45) {
+      const rand = Math.random();
+      if (rand < 0.4) {
+        this.activeModifier = 'double_points';
+        if (banner) {
+          banner.style.display = 'flex';
+          banner.innerHTML = isEn
+            ? '⚡ <strong>Double Points (2X)!</strong> All round points doubled!'
+            : '⚡ <strong>جولة مضاعفة النقاط (2X)!</strong> جميع نقاط الجولة تحتسب مرتين!';
+        }
+      } else if (rand < 0.75) {
+        this.activeModifier = 'blitz_speed';
+        this.timeLeft = 35; // جولة برق سريعة
+        if (banner) {
+          banner.style.display = 'flex';
+          banner.innerHTML = isEn
+            ? '⏱️ <strong>Speed Blitz (35s)!</strong> Fast pace with +15 bonus XP!'
+            : '⏱️ <strong>تحدي البرق (35 ثانية)!</strong> سرعة فائقة و +15 نقطة خبرة بونص!';
+        }
+      } else {
+        this.activeModifier = 'perfect_seven';
+        if (banner) {
+          banner.style.display = 'flex';
+          banner.innerHTML = isEn
+            ? '🎯 <strong>Perfect 7 Challenge!</strong> +20 bonus XP if you fill all 7 categories!'
+            : '🎯 <strong>تحدي الكمال!</strong> +20 نقطة بونص إذا جاوبت على الـ 7 تصنيفات كاملة!';
+        }
+      }
+    } else {
+      this.activeModifier = null;
+      if (banner) banner.style.display = 'none';
+    }
+  }
+
+  getAchievementsConfig() {
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    return [
+      {
+        id: 'fast_stop',
+        icon: '⚡',
+        titleAr: 'البرق الخاطف',
+        titleEn: 'Lightning Fast',
+        descAr: 'أنهِ الجولة واضغط (قِف! خَلّصت) في أول 25 ثانية من الوقت!',
+        descEn: 'Finish round and call STOP within the first 25 seconds!'
+      },
+      {
+        id: 'perfect_70',
+        icon: '🎯',
+        titleAr: 'العلامة الكاملة',
+        titleEn: 'Flawless 70',
+        descAr: 'اجمع 70 نقطة كاملة (10 نقاط في جميع التصنيفات الـ 7)!',
+        descEn: 'Score 70 points (10 points in all 7 categories) in one round!'
+      },
+      {
+        id: 'words_collector',
+        icon: '📚',
+        titleAr: 'قاموس الفصحى',
+        titleEn: 'Word Lexicon',
+        descAr: 'اكتب واجمع 25 كلمة عربية صحيحة ومعتمدة في رصيدك.',
+        descEn: 'Successfully submit 25 valid dictionary words in total.'
+      },
+      {
+        id: 'streak_3',
+        icon: '🔥',
+        titleAr: 'شعلة الاستمرار',
+        titleEn: 'Flame Champion',
+        descAr: 'العب اللعبة وحافظ على سلسلتك اليومية لمدة 3 أيام متتالية!',
+        descEn: 'Maintain your daily playing streak for 3 consecutive days!'
+      },
+      {
+        id: 'flawless_no_hint',
+        icon: '💡',
+        titleAr: 'العقل اللامع',
+        titleEn: 'Mastermind',
+        descAr: 'تفوّق على الخصم الذكي في جولة دون استخدام أي تلميح سحري!',
+        descEn: 'Defeat AI in a round without using any magic hints!'
+      },
+      {
+        id: 'undefeated_3',
+        icon: '👑',
+        titleAr: 'صائد الانتصارات',
+        titleEn: 'Victory Streak',
+        descAr: 'حقّق 3 انتصارات متتالية ضد الخصم الذكي دون أي هزيمة!',
+        descEn: 'Win 3 rounds in a row against the AI without defeat!'
+      },
+      {
+        id: 'social_butterfly',
+        icon: '👥',
+        titleAr: 'روح الجماعة',
+        titleEn: 'Social Hero',
+        descAr: 'شارك أو استضف جولة في غرف الأصدقاء أونلاين حتى 8 لاعبين.',
+        descEn: 'Play an online multiplayer room with your friends.'
+      }
+    ];
+  }
+
+  renderAchievementsList() {
+    const grid = document.getElementById('achievements-grid');
+    const badgeCount = document.getElementById('achievements-count-badge');
+    const config = this.getAchievementsConfig();
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+
+    if (badgeCount) {
+      badgeCount.textContent = `${this.unlockedAchievements.length}/${config.length}`;
+    }
+
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    config.forEach(ach => {
+      const isUnlocked = this.unlockedAchievements.includes(ach.id);
+      const card = document.createElement('div');
+      card.className = `achievement-card ${isUnlocked ? 'unlocked' : 'locked'}`;
+
+      const title = isEn ? ach.titleEn : ach.titleAr;
+      const desc = isEn ? ach.descEn : ach.descAr;
+      const statusText = isUnlocked
+        ? (isEn ? 'Unlocked 🏆' : 'مكتمل 🏆')
+        : (isEn ? 'Locked 🔒' : 'قيد التقدم 🔒');
+
+      card.innerHTML = `
+        <div class="achievement-icon">${ach.icon}</div>
+        <div class="achievement-info">
+          <div class="achievement-title">${title}</div>
+          <div class="achievement-desc">${desc}</div>
+        </div>
+        <div class="achievement-status-badge ${isUnlocked ? 'unlocked' : 'locked'}">
+          ${statusText}
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  unlockAchievement(id) {
+    if (this.unlockedAchievements.includes(id)) return;
+    this.unlockedAchievements.push(id);
+    try {
+      localStorage.setItem('khalast_achievements', JSON.stringify(this.unlockedAchievements));
+    } catch (e) {}
+
+    const config = this.getAchievementsConfig();
+    const ach = config.find(a => a.id === id);
+    if (!ach) return;
+
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    const title = isEn ? ach.titleEn : ach.titleAr;
+
+    this.addXP(100);
+    sounds.playCelebratoryVictory();
+    this.fireConfetti();
+    this.renderAchievementsList();
+
+    const toastMsg = isEn
+      ? `🏅 Achievement Unlocked: ${title} (+100 XP)!`
+      : `🏅 إنجاز جديد مفتوح: ${title} (+100 XP)!`;
+    this.showToast(toastMsg);
+  }
+
+  initDailyStreak() {
+    const today = new Date().toISOString().split('T')[0];
+    const lastDate = localStorage.getItem('khalast_last_played_date');
+    let streak = parseInt(localStorage.getItem('khalast_daily_streak') || '1', 10);
+
+    if (lastDate) {
+      const last = new Date(lastDate);
+      const curr = new Date(today);
+      const diffDays = Math.round((curr - last) / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        streak++;
+        localStorage.setItem('khalast_daily_streak', streak);
+        localStorage.setItem('khalast_last_played_date', today);
+        this.addXP(50);
+        setTimeout(() => {
+          this.showToast(`🔥 حافظت على شعلتك اليومية! مكافأة اليوم: +50 XP!`);
+        }, 1200);
+      } else if (diffDays > 1) {
+        streak = 1;
+        localStorage.setItem('khalast_daily_streak', streak);
+        localStorage.setItem('khalast_last_played_date', today);
+      }
+    } else {
+      localStorage.setItem('khalast_last_played_date', today);
+      localStorage.setItem('khalast_daily_streak', streak);
+    }
+
+    this.dailyStreak = streak;
+    const streakBadge = document.getElementById('streak-count-badge');
+    if (streakBadge) streakBadge.textContent = streak;
+
+    if (streak >= 3) {
+      this.unlockAchievement('streak_3');
+    }
+  }
+
+  openStreakModal() {
+    this.closeAchievementsModal();
+    const settingsDrawer = document.getElementById('settings-drawer');
+    if (settingsDrawer) settingsDrawer.classList.remove('open');
+    if (typeof multiplayer !== 'undefined' && multiplayer.closeMultiplayerModal) multiplayer.closeMultiplayerModal();
+
+    const modal = document.getElementById('streak-modal');
+    if (!modal) return;
+    const daysEl = document.getElementById('modal-streak-days');
+    const trackEl = document.getElementById('streak-week-track');
+
+    if (daysEl) daysEl.textContent = `${this.dailyStreak} ${this.dailyStreak === 1 ? 'يوم' : 'أيام'}`;
+
+    if (trackEl) {
+      trackEl.innerHTML = '';
+      const daysOfWeek = ['سبت', 'أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة'];
+      const todayDayIdx = new Date().getDay(); // 0 is Sun, 6 is Sat
+
+      daysOfWeek.forEach((dayName, idx) => {
+        const cell = document.createElement('div');
+        const isActive = idx <= (todayDayIdx === 6 ? 0 : todayDayIdx + 1);
+        cell.className = `streak-day-cell ${isActive ? 'active' : ''}`;
+        cell.innerHTML = `
+          <div class="streak-day-icon">${isActive ? '🔥' : '⚪'}</div>
+          <div class="streak-day-name">${dayName}</div>
+        `;
+        trackEl.appendChild(cell);
+      });
+    }
+
+    modal.classList.add('active');
+    this.checkBodyModalState();
+  }
+
+  closeStreakModal() {
+    const modal = document.getElementById('streak-modal');
+    if (modal) modal.classList.remove('active');
+    this.checkBodyModalState();
+  }
+
+  openAchievementsModal() {
+    this.closeStreakModal();
+    const settingsDrawer = document.getElementById('settings-drawer');
+    if (settingsDrawer) settingsDrawer.classList.remove('open');
+    if (typeof multiplayer !== 'undefined' && multiplayer.closeMultiplayerModal) multiplayer.closeMultiplayerModal();
+
+    this.renderAchievementsList();
+    const modal = document.getElementById('achievements-modal');
+    if (modal) modal.classList.add('active');
+    this.checkBodyModalState();
+  }
+
+  closeAchievementsModal() {
+    const modal = document.getElementById('achievements-modal');
+    if (modal) modal.classList.remove('active');
+    this.checkBodyModalState();
+  }
+
+  shareWhatsApp() {
+    let roundP = this.reviewResults.reduce((s, r) => s + (r.pPoints || 0), 0);
+    if (this.stoppedBy === 'player') roundP += 5;
+    const letter = this.currentLetter || '؟';
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    const url = window.location.href.split('#')[0];
+
+    const text = isEn
+      ? `🔥 Word Challenge! Can you beat my score of ${roundP} points on letter (${letter})?\nPlay with me now: ${url}`
+      : `🔥 تحدي الحروف والكلمات!\nهل تقدر تفوز علي؟ حققت ${roundP} نقطة بحرف (${letter})!\nادخل والعب معي الآن: ${url}`;
+
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   }
 
   startObjection(catId, target) {
@@ -938,6 +1621,7 @@ class EnsanHayawanGame {
 
     const votingModal = document.getElementById('voting-modal');
     if (votingModal) votingModal.classList.add('active');
+    this.checkBodyModalState();
 
     if (typeof multiplayer !== 'undefined' && multiplayer.isMultiplayer) {
       multiplayer.send('START_GROUP_OBJECTION', {
@@ -961,6 +1645,7 @@ class EnsanHayawanGame {
     } else {
       this.humanVotes.reject++;
       sounds.playWrong();
+      sounds.speakVoice('made_up');
     }
 
     if (typeof multiplayer !== 'undefined' && multiplayer.isMultiplayer) {
@@ -1099,7 +1784,10 @@ class EnsanHayawanGame {
       if (verdict === 'rejected') {
         verdictBox.className = 'verdict-box verdict-rejected';
         verdictText.innerHTML = `🔨 قرار المحكمة: <strong>مرفوضة بالأغلبية!</strong> (${reasonText})<br><span style="font-size:0.9rem;">🚫 لا تُحتسب أي نقاط للكلمة (0 نقطة)</span>`;
-        setTimeout(() => sounds.playWrong(), 250);
+        setTimeout(() => {
+          sounds.playWrong();
+          sounds.speakVoice('made_up');
+        }, 250);
       } else {
         verdictBox.className = 'verdict-box verdict-accepted';
         verdictText.innerHTML = `🔨 قرار المحكمة: <strong>مقبولة وصحيحة!</strong> (${reasonText})<br><span style="font-size:0.9rem;">✨ تُحتسب النقاط كاملة لصاحبها</span>`;
@@ -1184,31 +1872,13 @@ class EnsanHayawanGame {
     if (modal) modal.classList.remove('active');
     this.currentVote = null;
     this.currentVerdict = null;
-  }
-
-  toggleManualOverride(catId) {
-    const item = this.reviewResults.find(r => r.catId === catId);
-    if (!item) return;
-
-    // تبديل النقاط بين 0 و 10
-    if (item.pPoints === 0) {
-      item.pPoints = 10;
-      this.totalScore += 10;
-      item.playerVoteStatus = 'accepted';
-    } else {
-      this.totalScore -= item.pPoints;
-      item.pPoints = 0;
-      item.playerVoteStatus = 'rejected';
-    }
-
-    this.updateStatsDisplay();
-    this.renderResultsTable();
-    this.updateResultsSummary();
+    this.checkBodyModalState();
   }
 
   closeResultsModal() {
     const modal = document.getElementById('results-modal');
     if (modal) modal.classList.remove('active');
+    this.checkBodyModalState();
   }
 
   updateStatsDisplay() {
@@ -1223,40 +1893,61 @@ class EnsanHayawanGame {
     if (timerEl && !this.isRoundActive) timerEl.textContent = `${this.timeLeft} ثانية`;
   }
 
+  checkBodyModalState() {
+    const anyModal = document.querySelector('.modal-backdrop.active, .settings-drawer.open');
+    if (anyModal) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+  }
+
   fireConfetti() {
     const canvas = document.getElementById('confetti-canvas');
     if (!canvas) return;
+
+    if (this._confettiAnimId) {
+      cancelAnimationFrame(this._confettiAnimId);
+      this._confettiAnimId = null;
+    }
 
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
+    const isMobile = window.innerWidth <= 768;
+    const count = isMobile ? 55 : 85;
     const particles = [];
     const colors = ['#f59e0b', '#ec4899', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'];
+    const w = canvas.width;
+    const h = canvas.height;
 
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < count; i++) {
       particles.push({
-        x: canvas.width / 2,
-        y: canvas.height / 2,
-        vx: (Math.random() - 0.5) * 16,
-        vy: (Math.random() - 1.2) * 14,
-        size: Math.random() * 8 + 4,
+        x: w / 2,
+        y: h / 2,
+        vx: (Math.random() - 0.5) * (isMobile ? 12 : 16),
+        vy: (Math.random() - 1.2) * (isMobile ? 12 : 15),
+        size: Math.random() * 6 + 4,
         color: colors[Math.floor(Math.random() * colors.length)],
         rotation: Math.random() * 360,
-        rSpeed: (Math.random() - 0.5) * 10,
+        rSpeed: (Math.random() - 0.5) * 8,
         life: 1
       });
     }
 
     let frame = 0;
-    function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles.forEach(p => {
+    const animate = () => {
+      ctx.clearRect(0, 0, w, h);
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += 0.35; // gravity
+        p.vy += 0.32; // gravity
         p.rotation += p.rSpeed;
-        p.life -= 0.015;
+        p.life -= 0.018;
+
+        if (p.life <= 0) continue;
 
         ctx.save();
         ctx.translate(p.x, p.y);
@@ -1265,16 +1956,17 @@ class EnsanHayawanGame {
         ctx.globalAlpha = Math.max(0, p.life);
         ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
         ctx.restore();
-      });
+      }
 
       frame++;
-      if (frame < 80) {
-        requestAnimationFrame(animate);
+      if (frame < 65) {
+        this._confettiAnimId = requestAnimationFrame(animate);
       } else {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
+        this._confettiAnimId = null;
       }
-    }
-    requestAnimationFrame(animate);
+    };
+    this._confettiAnimId = requestAnimationFrame(animate);
   }
 }
 

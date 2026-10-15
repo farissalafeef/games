@@ -147,6 +147,14 @@ class MultiplayerManager {
       });
     }
 
+    // زر دعوة الأصدقاء عبر واتساب
+    const btnWhatsAppRoom = document.getElementById('btn-whatsapp-room-link');
+    if (btnWhatsAppRoom) {
+      btnWhatsAppRoom.addEventListener('click', () => {
+        this.shareWhatsAppInvite();
+      });
+    }
+
     // زر بدء الجولة من المستضيف
     const btnStartMpGame = document.getElementById('btn-start-mp-game');
     if (btnStartMpGame) {
@@ -241,6 +249,16 @@ class MultiplayerManager {
     });
   }
 
+  shareWhatsAppInvite() {
+    if (!this.currentRoom) return;
+    const url = `${window.location.origin}/join/${this.currentRoom.code}`;
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    const msg = isEn
+      ? `🎮 Join my room in Words Challenge! Room Code: ${this.currentRoom.code}\nClick to join instantly: ${url}`
+      : `🎮 تعال العب معي في لعبة الحروف والكلمات! رمز الغرفة: ${this.currentRoom.code}\nادخل والعب معي فوراً بضغطة واحدة: ${url}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
   handleServerMessage(data) {
     const { type, payload } = data;
 
@@ -252,6 +270,9 @@ class MultiplayerManager {
         this.myPlayerId = payload.playerId;
         this.renderLobbyUI();
         this.updateHeaderRoomBadge();
+        if (typeof game !== 'undefined' && game.unlockAchievement) {
+          game.unlockAchievement('social_butterfly');
+        }
         break;
       }
 
@@ -287,7 +308,10 @@ class MultiplayerManager {
 
       case 'STOP_TRIGGERED': {
         // شخص ما في الغرفة ضغط "قِف! خَلّصت"
-        if (typeof sounds !== 'undefined') sounds.playStopWhistle();
+        if (typeof sounds !== 'undefined') {
+          sounds.playStopWhistle();
+          setTimeout(() => sounds.speakVoice('stop'), 120);
+        }
         if (typeof game !== 'undefined') {
           game.timeLeft = Math.min(game.timeLeft, payload.panicSeconds);
           game.isPanicMode = true;
@@ -429,13 +453,22 @@ class MultiplayerManager {
   }
 
   openMultiplayerModal() {
+    if (window.game) {
+      if (window.game.closeStreakModal) window.game.closeStreakModal();
+      if (window.game.closeAchievementsModal) window.game.closeAchievementsModal();
+    }
+    const settingsDrawer = document.getElementById('settings-drawer');
+    if (settingsDrawer) settingsDrawer.classList.remove('open');
+
     const modal = document.getElementById('multiplayer-modal');
     if (modal) modal.classList.add('active');
+    if (window.game && window.game.checkBodyModalState) window.game.checkBodyModalState();
   }
 
   closeMultiplayerModal() {
     const modal = document.getElementById('multiplayer-modal');
     if (modal) modal.classList.remove('active');
+    if (window.game && window.game.checkBodyModalState) window.game.checkBodyModalState();
   }
 
   exitMultiplayer() {

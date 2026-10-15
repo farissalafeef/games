@@ -62,6 +62,40 @@ class SoundEngine {
     this.playTone(880, 'triangle', 0.06, 0.1, false);
   }
 
+  playComboChime(level = 1) {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const scale = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50, 1174.66, 1318.51];
+    const freq = scale[Math.min(level - 1, scale.length - 1)];
+    this.playTone(freq, 'sine', 0.14, 0.18, false);
+    setTimeout(() => {
+      this.playTone(freq * 1.5, 'sine', 0.18, 0.14, false);
+    }, 50);
+  }
+
+  playHeartbeat() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    this.playTone(95, 'sine', 0.09, 0.32, true);
+    setTimeout(() => {
+      this.playTone(75, 'sine', 0.13, 0.25, true);
+    }, 130);
+  }
+
+  playMagicSparkle() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const notes = [659.25, 783.99, 987.77, 1318.51, 1567.98];
+    notes.forEach((freq, idx) => {
+      setTimeout(() => {
+        this.playTone(freq, 'sine', 0.12, 0.12, false);
+      }, idx * 45);
+    });
+  }
+
   playSpinClick(pitch = 750) {
     if (this.muted) return;
     this.init();
@@ -335,6 +369,66 @@ class SoundEngine {
   playVictory() {
     // توجيه إلى الصوت الاحتفالي المتطور
     this.playCelebratoryVictory();
+  }
+
+  /**
+   * نطق العبارات والمؤثرات الصوتية الصوتية (عربي وإنجليزي)
+   * stop: "وقفوا خلاص!" / "Stop! Time's up!"
+   * win_first: "كفو! انت الأول!" / "Awesome! You're number one!"
+   * made_up: "ما تكدبش!" / "Don't make stuff up!"
+   */
+  speakVoice(action) {
+    if (this.muted) return;
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {}
+
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+
+    const voicePhrases = {
+      stop: {
+        ar: 'وقفوا خلاص!',
+        en: "Stop! Time's up!"
+      },
+      win_first: {
+        ar: 'كفو! انت الأول!',
+        en: "Awesome! You're number one!"
+      },
+      made_up: {
+        ar: 'ما تكدبش!',
+        en: "Don't make stuff up!"
+      }
+    };
+
+    const target = voicePhrases[action];
+    if (!target) return;
+
+    const text = isEn ? target.en : target.ar;
+    const lang = isEn ? 'en-US' : 'ar-SA';
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.volume = 1.0;
+    utterance.rate = isEn ? 1.05 : 0.95;
+    utterance.pitch = 1.15; // نبرة حماسية وتفاعلية
+
+    // اختيار صوت مناسب للغة إن وجد في المتصفح
+    try {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        const prefix = isEn ? 'en' : 'ar';
+        const match = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(prefix));
+        if (match) utterance.voice = match;
+      }
+    } catch (e) {}
+
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('SpeechSynthesis error:', e);
+    }
   }
 }
 
