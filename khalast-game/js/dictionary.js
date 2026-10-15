@@ -306,61 +306,7 @@ function normalizeArabic(text) {
     .replace(/ة$/g, 'ه');
 }
 
-/**
- * التحقق من صحة الكلمة لحرف وتصنيف معين
- * تراعي أداة التعريف (الـ) تلقائياً
- */
-function validateWord(word, targetLetter, category) {
-  if (!word || !targetLetter || !category) return { valid: false, reason: 'حقل فارغ' };
 
-  const normTarget = normalizeArabic(targetLetter);
-  let cleanWord = normalizeArabic(word);
-
-  // فحص الكلمة بدون الـ التعريف إذا لزم
-  let strippedWord = cleanWord;
-  if (cleanWord.startsWith('ال') && cleanWord.length > 2) {
-    strippedWord = cleanWord.substring(2);
-  }
-
-  // هل تبدأ الكلمة بالحرف المطلوب؟
-  const startsDirect = cleanWord.startsWith(normTarget);
-  const startsStripped = strippedWord.startsWith(normTarget);
-
-  if (!startsDirect && !startsStripped) {
-    return {
-      valid: false,
-      reason: `الكلمة لا تبدأ بحرف (${targetLetter})`
-    };
-  }
-
-  // التحقق من وجود الكلمة في القاموس
-  const letterDict = ARABIC_DICTIONARY[normTarget];
-  if (!letterDict || !letterDict[category]) {
-    // إذا كان الحرف نادراً جداً أو التصنيف غير محدد
-    return { valid: true, custom: true, reason: 'مقبول (حرف خاص)' };
-  }
-
-  const categoryWords = letterDict[category].map(normalizeArabic);
-
-  // مطابقة مباشرة أو مطابقة مع الكلمة المجردة
-  const found = categoryWords.some(dictWord => {
-    return dictWord === cleanWord ||
-           dictWord === strippedWord ||
-           dictWord.includes(cleanWord) ||
-           cleanWord.includes(dictWord);
-  });
-
-  if (found) {
-    return { valid: true, exactMatch: true, reason: 'مطابق للقاموس' };
-  }
-
-  // حتى لو لم تكن الكلمة في القاموس الصغير، إذا كانت تبدأ بالحرف المطلوب ولها طول معقول، نعتبرها كلمة مقبولة مع وسم "تحت المراجعة"
-  if (startsDirect || startsStripped) {
-    return { valid: true, custom: true, reason: 'مقبول (كلمة جديدة)' };
-  }
-
-  return { valid: false, reason: 'غير متطابق' };
-}
 
 /**
  * قاموس اللغة الإنجليزية الشامل للتصنيفات
@@ -631,17 +577,13 @@ function validateWord(word, targetLetter, category) {
     const dict = ENGLISH_DICTIONARY[cleanTarget];
     if (dict && dict[category]) {
       const list = dict[category].map(w => w.toUpperCase());
-      const found = list.some(w => w === cleanWord || w === stripped || cleanWord.includes(w) || w.includes(cleanWord));
+      const found = list.some(w => w === cleanWord || w === stripped);
       if (found) {
-        return { valid: true, exactMatch: true, reason: 'Matched dictionary' };
+        return { valid: true, exactMatch: true, reason: 'Matched standard dictionary' };
       }
     }
 
-    if (starts) {
-      return { valid: true, custom: true, reason: 'Accepted (Custom word)' };
-    }
-
-    return { valid: false, reason: 'Invalid word' };
+    return { valid: false, exactMatch: false, reason: `Word not recognized in dictionary for (${category})` };
   }
 
   // وإلا فحص باللغة العربية
@@ -659,33 +601,28 @@ function validateWord(word, targetLetter, category) {
   if (!startsDirect && !startsStripped) {
     return {
       valid: false,
+      exactMatch: false,
       reason: `الكلمة لا تبدأ بحرف (${targetLetter})`
     };
   }
 
   const letterDict = ARABIC_DICTIONARY[normTarget];
   if (!letterDict || !letterDict[category]) {
-    return { valid: true, custom: true, reason: 'مقبول (حرف خاص)' };
+    return { valid: false, exactMatch: false, reason: 'تصنيف أو حرف غير متوفر في المعجم' };
   }
 
   const categoryWords = letterDict[category].map(normalizeArabic);
 
+  // مطابقة صريحة دقيقة (إما الكلمة كاملة أو بعد تجريد الـ التعريف)
   const found = categoryWords.some(dictWord => {
-    return dictWord === cleanWord ||
-           dictWord === strippedWord ||
-           dictWord.includes(cleanWord) ||
-           cleanWord.includes(dictWord);
+    return dictWord === cleanWord || dictWord === strippedWord;
   });
 
   if (found) {
-    return { valid: true, exactMatch: true, reason: 'مطابق للقاموس' };
+    return { valid: true, exactMatch: true, reason: 'اللفظ مطابق ومثبت في المعجم العربي' };
   }
 
-  if (startsDirect || startsStripped) {
-    return { valid: true, custom: true, reason: 'مقبول (كلمة جديدة)' };
-  }
-
-  return { valid: false, reason: 'غير متطابق' };
+  return { valid: false, exactMatch: false, reason: 'الكلمة غير مسجلة في معجم هذا التصنيف' };
 }
 
 /**

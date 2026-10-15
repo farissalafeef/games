@@ -4,15 +4,15 @@
   <base href="/">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>خَلّصت | إنسان حيوان نبات جماد بلاد</title>
+  <title>لعبة الحروف والكلمات | إنسان حيوان نبات جماد بلاد</title>
 
   <!-- بيانات وتوافق تطبيقات الجوال (PWA & Mobile Meta) -->
   <meta name="theme-color" content="#0b0f19">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="خَلّصت">
-  <meta name="application-name" content="خَلّصت">
+  <meta name="apple-mobile-web-app-title" content="لعبة الحروف والكلمات">
+  <meta name="application-name" content="لعبة الحروف والكلمات">
   <meta name="format-detection" content="telephone=no">
 
   <link rel="manifest" href="manifest.json">
@@ -27,7 +27,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   
   <!-- ورقة الأنماط -->
-  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body>
 
@@ -41,7 +41,7 @@
       <div class="brand">
         <span class="brand-icon">🎮</span>
         <div class="brand-text">
-          <h1 class="brand-title"><span class="brand-main">خَلّصت</span> <span class="brand-sub" data-i18n="app_title">| إنسان حيوان جماد</span></h1>
+          <h1 class="brand-title"><span class="brand-main">لعبة الحروف والكلمات</span> <span class="brand-sub" data-i18n="app_title">| إنسان حيوان نبات</span></h1>
           <p class="brand-subtitle" data-i18n="app_subtitle">التحدي الكلاسيكي بأسلوب حديث وتفاعلي</p>
         </div>
       </div>
@@ -59,6 +59,9 @@
         </button>
         <button id="settings-btn" class="icon-btn" title="الإعدادات">
           <span>⚙️</span>
+        </button>
+        <button id="header-exit-btn" class="icon-btn highlight-exit-btn" title="خروج من اللعبة" style="display:none;">
+          <span>🚪</span><span class="btn-lbl">خروج</span>
         </button>
         <button id="install-pwa-btn" class="icon-btn highlight-install-btn" style="display:none;" title="تثبيت التطبيق">
           <span>📲</span>
@@ -124,8 +127,11 @@
       <!-- يتم حقن الحقول ديناميكياً بواسطة JavaScript -->
     </section>
 
-    <!-- زر قِف! خَلّصت الكبير (يظهر فقط أثناء الجولة والعد التنازلي) -->
+    <!-- أزرار الحركة أثناء الجولة والعد التنازلي -->
     <div class="stop-action-container" id="stop-action-container">
+      <button id="btn-forfeit" class="btn-forfeit" title="انسحاب من الجولة">
+        🏳️ انسحاب
+      </button>
       <button id="btn-stop" class="btn-stop" disabled data-i18n="stop_btn">
         🛑 قِف! خَلّصت
       </button>
@@ -163,6 +169,9 @@
       <div class="modal-actions">
         <button id="modal-next-round-btn" class="btn-primary" data-i18n="next_round_btn">
           ➡️ الجولة التالية
+        </button>
+        <button id="modal-exit-game-btn" class="btn-secondary btn-exit" data-i18n="exit_game_btn">
+          🚪 خروج للرئيسية
         </button>
       </div>
     </div>
@@ -399,12 +408,12 @@
   </aside>
 
   <!-- ملفات منطق اللعبة والترجمة -->
-  <script src="js/i18n.js?v=5"></script>
-  <script src="js/dictionary.js?v=5"></script>
-  <script src="js/audio.js?v=5"></script>
-  <script src="js/phaser-effects.js?v=5"></script>
-  <script src="js/game.js?v=5"></script>
-  <script src="js/multiplayer.js?v=5"></script>
+  <script src="js/i18n.js?v=6"></script>
+  <script src="js/dictionary.js?v=6"></script>
+  <script src="js/audio.js?v=6"></script>
+  <script src="js/phaser-effects.js?v=6"></script>
+  <script src="js/game.js?v=6"></script>
+  <script src="js/multiplayer.js?v=6"></script>
 
   <!-- تسجيل Service Worker وإدارة التثبيت على الجوالات -->
   <script>

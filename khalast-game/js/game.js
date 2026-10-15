@@ -177,6 +177,22 @@ class EnsanHayawanGame {
       });
     }
 
+    // أزرار الخروج والانسحاب
+    const modalExitBtn = document.getElementById('modal-exit-game-btn');
+    if (modalExitBtn) {
+      modalExitBtn.addEventListener('click', () => this.exitGame(false));
+    }
+
+    const btnForfeit = document.getElementById('btn-forfeit');
+    if (btnForfeit) {
+      btnForfeit.addEventListener('click', () => this.exitGame(true));
+    }
+
+    const headerExitBtn = document.getElementById('header-exit-btn');
+    if (headerExitBtn) {
+      headerExitBtn.addEventListener('click', () => this.exitGame(true));
+    }
+
     // أحداث نافذة التحكيم والتصويت
     const btnHumanAccept = document.getElementById('btn-human-accept');
     if (btnHumanAccept) {
@@ -361,12 +377,97 @@ class EnsanHayawanGame {
       stopBtn.innerHTML = (typeof i18n !== 'undefined') ? i18n.t('stop_btn') : '🛑 قِف! خَلّصت';
     }
 
+    const headerExitBtn = document.getElementById('header-exit-btn');
+    if (headerExitBtn) headerExitBtn.style.display = 'inline-flex';
+
     const spinBtn = document.getElementById('spin-btn');
     if (spinBtn) spinBtn.disabled = true;
 
     this.startTimer();
     this.startAiSimulation();
     this.updateStatsDisplay();
+  }
+
+  exitGame(confirmPrompt = true) {
+    if (confirmPrompt) {
+      const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+      const msg = isEn
+        ? (i18n.t('exit_confirm') || 'Are you sure you want to forfeit and exit to the main menu?')
+        : (typeof i18n !== 'undefined' ? i18n.t('exit_confirm') : 'هل أنت متأكد من الانسحاب والخروج من اللعبة والعودة للرئيسية؟');
+      if (!confirm(msg)) return;
+    }
+
+    // إيقاف جميع المؤقتات وحلقات المحاكاة
+    clearInterval(this.timerInterval);
+    clearInterval(this.aiTypingInterval);
+    this.isRoundActive = false;
+    this.isPanicMode = false;
+    this.stoppedBy = null;
+    this.currentLetter = null;
+    this.currentVote = null;
+    this.currentRound = 1;
+    this.totalScore = 0;
+    this.aiTotalScore = 0;
+    this.playerAnswers = {};
+    this.aiAnswers = {};
+    this.aiObjections = [];
+
+    // إزالة صنف الجولة الجارية
+    document.body.classList.remove('round-in-progress');
+
+    // إخفاء الحاويات العائمة وأزرار الخروج
+    const stopContainer = document.getElementById('stop-action-container');
+    if (stopContainer) stopContainer.classList.remove('active');
+
+    const headerExitBtn = document.getElementById('header-exit-btn');
+    if (headerExitBtn) headerExitBtn.style.display = 'none';
+
+    this.closeResultsModal();
+    this.closeVotingModal();
+
+    // إعادة زر التدوير والشارة للوضع المبدئي
+    const spinBtn = document.getElementById('spin-btn');
+    if (spinBtn) spinBtn.disabled = false;
+
+    const badge = document.getElementById('target-letter-badge');
+    if (badge) badge.textContent = '؟';
+
+    const letterNameEl = document.getElementById('target-letter-name');
+    if (letterNameEl) {
+      letterNameEl.textContent = (typeof i18n !== 'undefined') ? i18n.t('target_letter_ready') : 'جاهز للبدء؟';
+    }
+
+    // تفريغ وتعطيل حقول الإدخال
+    const activeCats = this.getActiveCategories();
+    activeCats.forEach(cat => {
+      const input = document.getElementById(`input-${cat.id}`);
+      const icon = document.getElementById(`status-icon-${cat.id}`);
+      if (input) {
+        input.value = '';
+        input.disabled = true;
+      }
+      if (icon) icon.classList.remove('active');
+    });
+
+    // إعادة ضبط عداد الوقت
+    const timerEl = document.getElementById('stat-timer');
+    const unit = (typeof i18n !== 'undefined') ? i18n.t('seconds_unit') : 'ثانية';
+    if (timerEl) timerEl.textContent = `${this.timerDuration} ${unit}`;
+
+    // إعادة ضبط بطاقة الخصم الذكي
+    const aiStatus = document.getElementById('ai-status');
+    const aiFill = document.getElementById('ai-progress-fill');
+    if (aiStatus) {
+      aiStatus.textContent = (typeof i18n !== 'undefined') ? i18n.t('ai_waiting') : 'في انتظار بدء الجولة...';
+    }
+    if (aiFill) aiFill.style.width = '0%';
+
+    this.updateStatsDisplay();
+
+    // إذا كان في غرفة أونلاين: مغادرة الغرفة
+    if (typeof multiplayer !== 'undefined' && multiplayer.currentRoom) {
+      multiplayer.leaveRoom();
+    }
   }
 
   startTimer() {
@@ -897,48 +998,66 @@ class EnsanHayawanGame {
     if (btnRunJury) btnRunJury.disabled = true;
 
     const val = validateWord(word, letter, catId);
+    const activeCats = this.getActiveCategories();
+    const catObj = activeCats.find(c => c.id === catId);
+    const catLabel = catObj ? catObj.label : catId;
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
 
-    // 1. الحكم المعجمي (أستاذ اللغة)
+    // 1. الحكم المعجمي (أستاذ اللغة) - فحص معجمي صارم وحقيقي
     let j1Vote = 'accepted';
-    let j1Comment = 'الكلمة فصيحة ومثبتة في المعاجم العربية! ✅';
-    if (!val.valid) {
+    let j1Comment = '';
+    if (!word || word.trim().length === 0) {
       j1Vote = 'rejected';
-      j1Comment = 'الكلمة لا تبدأ بالحرف المطلوب أصلاً! ❌';
-    } else if (val.custom) {
-      if (Math.random() > 0.45) {
-        j1Vote = 'accepted';
-        j1Comment = 'تعتبر من الألفاظ الشائعة المقبولة عرفاً ✅';
-      } else {
-        j1Vote = 'rejected';
-        j1Comment = 'لم أجد لها أصلاً لغوياً معتمداً في المعاجم ❌';
-      }
-    }
-
-    // 2. الخصم المنافس
-    let j2Vote = 'rejected';
-    let j2Comment = 'أعترض بشدة! الكلمة غير مقنعة ومؤلفة من الرأس! ❌';
-    if (target === 'player') {
-      if (val.exactMatch && Math.random() > 0.4) {
-        j2Vote = 'accepted';
-        j2Comment = 'حسناً.. الكلمة صحيحة وموجودة بالفعل ✅';
-      }
+      j1Comment = isEn ? 'The field is empty! ❌' : 'الحقل فارغ تماماً! ❌';
+    } else if (!val.valid && val.reason && (val.reason.includes('لا تبدأ') || val.reason.includes('does not start'))) {
+      j1Vote = 'rejected';
+      j1Comment = isEn ? `Word does not start with (${letter})! ❌` : `الكلمة لا تبدأ بالحرف المطلوب (${letter})! ❌`;
+    } else if (val.valid && val.exactMatch) {
+      j1Vote = 'accepted';
+      j1Comment = isEn ? `Verified in authoritative dictionaries as (${catLabel})! ✅` : `اللفظ فصيح ومثبت في المعاجم العربية المعتمدة كـ(${catLabel}) ✅`;
     } else {
-      // الخصم يدافع عن نفسه
-      j2Vote = 'accepted';
-      j2Comment = 'إجابتي دقيقة ولا تقبل الشك! ✅';
+      j1Vote = 'rejected';
+      j1Comment = isEn ? `Not recorded in authoritative dictionaries as (${catLabel})! ❌` : `بحثت في المعاجم العربية ولم أجد هذا اللفظ كـ(${catLabel}) ❌`;
     }
 
-    // 3. الحكم المحايد
-    let j3Vote = 'accepted';
-    let j3Comment = 'أتفق مع قبول الكلمة وفق السياق العام ✅';
-    if (j1Vote === 'rejected' && j2Vote === 'rejected') {
-      j3Vote = 'rejected';
-      j3Comment = 'بما أن الحكام اعترضوا، أرفضها أيضاً ❌';
-    } else if (j1Vote === 'rejected' || j2Vote === 'rejected') {
-      if (Math.random() > 0.5) {
-        j3Vote = 'rejected';
-        j3Comment = 'الشك يفسر لصالح المنافسة، أرفضها ❌';
+    // 2. الخصم المنافس - الروح التنافسية والشك
+    let j2Vote = 'rejected';
+    let j2Comment = '';
+    if (target === 'ai') {
+      // الخصم يدافع عن إجابته
+      j2Vote = 'accepted';
+      j2Comment = isEn ? 'My answer is standard and strictly accurate! ✅' : 'إجابتي دقيقة وصحيحة ومن صلب المعجم! ✅';
+    } else {
+      // الخصم يقيّم كلمة اللاعب
+      if (val.valid && val.exactMatch) {
+        j2Vote = 'accepted';
+        j2Comment = isEn ? 'Fair enough, the word is well-known and correct ✅' : 'الكلمة معروفة وصحيحة، أعترف بها بروح رياضية ✅';
+      } else {
+        j2Vote = 'rejected';
+        j2Comment = isEn ? 'I strongly object! That word sounds completely made-up! ❌' : 'أعترض بشدة! الكلمة غير مقنعة ومؤلفة من الرأس لكسب النقاط! ❌';
       }
+    }
+
+    // 3. الحكم المحايد - صوت العقل والميزان والترجيح المنطقي بين أستاذ اللغة والمنافس
+    let j3Vote = 'accepted';
+    let j3Comment = '';
+
+    if (j1Vote === 'accepted' && j2Vote === 'accepted') {
+      // إجماع على القبول
+      j3Vote = 'accepted';
+      j3Comment = isEn ? 'Unanimous consent: The word is verified and indisputable ✅' : 'إجماع الحكام: اللفظ فصيح ومعروف ولا وجه للشك فيه ✅';
+    } else if (j1Vote === 'rejected' && j2Vote === 'rejected') {
+      // إجماع على الرفض
+      j3Vote = 'rejected';
+      j3Comment = isEn ? 'Unanimous rejection: Lacks dictionary basis and fails review ❌' : 'إجماع الحكام: الكلمة تفتقر للسند المعجمي ومرفوضة بالإجماع ❌';
+    } else if (j1Vote === 'accepted' && j2Vote === 'rejected') {
+      // أستاذ اللغة أثبتها معجمياً واعتراض الخصم كيدي/تنافسي
+      j3Vote = 'accepted';
+      j3Comment = isEn ? 'Language Professor verified standard dictionary proof; opponent objection is dismissed ✅' : 'أستاذ اللغة أثبت صحة اللفظ معجمياً، واعتراض الخصم كيدي.. أقبل الكلمة ✅';
+    } else {
+      // أستاذ اللغة رفض لعدم ثبوتها في المعجم
+      j3Vote = 'rejected';
+      j3Comment = isEn ? 'Linguistic accuracy is paramount; lacking dictionary evidence, I uphold the rejection ❌' : 'المعجم هو الفيصل الأساسي؛ وما دام أستاذ اللغة لم يثبتها، أرفضها ❌';
     }
 
     const juryData = [
