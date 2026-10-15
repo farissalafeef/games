@@ -86,10 +86,10 @@ const LightWheel = {
       ctx.moveTo(0, 0);
       ctx.arc(0, 0, inner, a0, a0 + slice);
       ctx.closePath();
-      ctx.fillStyle = i % 2 === 0 ? '#0f172a' : '#1e1b4b';
+      ctx.fillStyle = i % 2 === 0 ? '#1e40af' : '#2563eb';
       ctx.fill();
-      ctx.strokeStyle = 'rgba(217,119,6,0.35)';
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#93c5fd';
+      ctx.lineWidth = 1;
       ctx.stroke();
     }
 
@@ -106,9 +106,9 @@ const LightWheel = {
       const y = Math.sin(mid) * r;
       ctx.beginPath();
       ctx.arc(x, y, medR, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(2,6,23,0.65)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.4)';
       ctx.fill();
-      ctx.strokeStyle = 'rgba(245,158,11,0.45)';
+      ctx.strokeStyle = 'rgba(147, 197, 253, 0.6)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
@@ -120,12 +120,12 @@ const LightWheel = {
       ctx.restore();
     }
 
-    // الإطار الذهبي
-    ctx.lineWidth = 4; ctx.strokeStyle = '#090d16';
+    // الإطار الأزرق والذهبي الأنيق
+    ctx.lineWidth = 4; ctx.strokeStyle = '#e2e8f0';
     ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.stroke();
-    ctx.lineWidth = 10; ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 10; ctx.strokeStyle = '#2563eb';
     ctx.beginPath(); ctx.arc(0, 0, radius - 5, 0, Math.PI * 2); ctx.stroke();
-    ctx.lineWidth = 1.8; ctx.strokeStyle = 'rgba(254,240,138,0.95)';
+    ctx.lineWidth = 1.8; ctx.strokeStyle = '#93c5fd';
     ctx.beginPath(); ctx.arc(0, 0, radius - 10, 0, Math.PI * 2); ctx.stroke();
 
     // المسامير
@@ -133,16 +133,16 @@ const LightWheel = {
       const a = i * slice - Math.PI / 2;
       const px = Math.cos(a) * (radius - 5.5);
       const py = Math.sin(a) * (radius - 5.5);
-      ctx.fillStyle = '#78350f'; ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1e40af'; ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#93c5fd'; ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI * 2); ctx.fill();
     }
 
     // المركز
     const hub = radius * 0.23;
-    ctx.fillStyle = '#78350f'; ctx.beginPath(); ctx.arc(0, 0, hub, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#f59e0b'; ctx.stroke();
-    ctx.fillStyle = '#090d16'; ctx.beginPath(); ctx.arc(0, 0, hub * 0.72, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fde047';
+    ctx.fillStyle = '#1e3a8a'; ctx.beginPath(); ctx.arc(0, 0, hub, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = '#93c5fd'; ctx.stroke();
+    ctx.fillStyle = '#2563eb'; ctx.beginPath(); ctx.arc(0, 0, hub * 0.72, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
     ctx.font = `bold ${Math.round(radius * 0.16)}px system-ui, sans-serif`;
     ctx.fillText('✦', 0, 1);
 
