@@ -23,14 +23,43 @@ class MultiplayerManager {
       if (onOpen) onOpen();
       return;
     }
+    if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+      this._pendingOpen = onOpen;
+      return;
+    }
+
+    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
+    this.showMpStatus(isEn ? '⏳ Connecting to server...' : '⏳ جاري الاتصال بالخادم...');
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}`;
-    this.ws = new WebSocket(wsUrl);
+    this._pendingOpen = onOpen;
+    try {
+      this.ws = new WebSocket(wsUrl);
+    } catch (e) {
+      this.showMpStatus(isEn ? '❌ Could not connect. Try again.' : '❌ تعذر الاتصال، حاول مرة أخرى.');
+      return;
+    }
+
+    clearTimeout(this._connectTimer);
+    this._connectTimer = setTimeout(() => {
+      if (this.ws && this.ws.readyState !== WebSocket.OPEN) {
+        try { this.ws.close(); } catch (e) {}
+        this.showMpStatus(isEn ? '❌ Server is waking up, please try again in a few seconds.' : '❌ الخادم يستيقظ، حاول مرة أخرى بعد ثوانٍ.');
+      }
+    }, 15000);
 
     this.ws.onopen = () => {
+      clearTimeout(this._connectTimer);
       console.log('✅ تم الاتصال بخادم الغرف بنجاح');
-      if (onOpen) onOpen();
+      this.showMpStatus('');
+      const cb = this._pendingOpen;
+      this._pendingOpen = null;
+      if (cb) cb();
+    };
+
+    this.ws.onerror = () => {
+      this.showMpStatus(isEn ? '❌ Connection error. Try again.' : '❌ خطأ في الاتصال، حاول مرة أخرى.');
     };
 
     this.ws.onmessage = (event) => {
@@ -43,12 +72,26 @@ class MultiplayerManager {
     };
 
     this.ws.onclose = () => {
+      clearTimeout(this._connectTimer);
       console.log('❌ انقطع الاتصال بخادم الغرف');
       if (this.isMultiplayer) {
-        alert('انقطع الاتصال بالغرفة المشتركة.');
+        alert(isEn ? 'Disconnected from the room.' : 'انقطع الاتصال بالغرفة المشتركة.');
         this.exitMultiplayer();
       }
     };
+  }
+
+  showMpStatus(text) {
+    let el = document.getElementById('mp-conn-status');
+    if (!el) {
+      const modal = document.getElementById('mp-select-view') || document.body;
+      el = document.createElement('div');
+      el.id = 'mp-conn-status';
+      el.style.cssText = 'margin:10px 0;padding:8px 12px;border-radius:10px;background:rgba(15,23,42,.85);color:#fde68a;font-weight:700;text-align:center;font-size:.95rem;';
+      modal.prepend(el);
+    }
+    el.textContent = text;
+    el.style.display = text ? 'block' : 'none';
   }
 
   send(type, payload = {}) {

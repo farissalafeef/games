@@ -227,7 +227,52 @@ body {
 
 #phaser-wheel-container canvas {
   border-radius: 50%;
-  filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 20px rgba(245, 158, 11, 0.15));
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55);
+}
+
+#phaser-wheel-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lw-pointer {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 30px;
+  height: 40px;
+  margin-left: -15px;
+  transform-origin: 15px 3px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.lw-pointer.lw-flap {
+  animation: lw-flap 0.12s ease-out;
+}
+
+@keyframes lw-flap {
+  0% { transform: rotate(-18deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.lw-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-size: 20px;
+  pointer-events: none;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  animation: lw-spark 0.85s ease-out forwards;
+}
+
+@keyframes lw-spark {
+  to {
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.5);
+    opacity: 0;
+  }
 }
 
 .letter-badge-display {
@@ -1437,4 +1482,50 @@ body.lang-en .settings-drawer {
   right: auto;
   border-right: 1px solid var(--bg-card-border);
   border-left: none;
+}
+
+/* ===== Mobile performance mode: remove GPU-heavy effects on phones ===== */
+@media (max-width: 768px), (hover: none) {
+  * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .wheel-wrapper::before {
+    display: none;
+  }
+  body::before,
+  body::after {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== Mobile fit: never wider than the screen (fixes sideways panning) ===== */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+@supports (overflow: clip) {
+  html, body { overflow-x: clip; }
+}
+img, canvas, svg, video { max-width: 100%; }
+
+@media (max-width: 640px) {
+  .settings-drawer { width: min(320px, 88vw); }
+  .categories-grid, [class*="grid"] { min-width: 0; }
+  .wheel-wrapper,
+  #phaser-wheel-container {
+    width: min(320px, calc(100vw - 40px));
+    height: min(320px, calc(100vw - 40px));
+    max-width: 100%;
+  }
+  header, .header, .game-header, .top-bar { flex-wrap: wrap; }
+  header *, .header-actions, .header-buttons { flex-wrap: wrap; min-width: 0; }
 }

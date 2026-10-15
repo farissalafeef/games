@@ -1,372 +1,297 @@
 /**
- * تكامل Phaser 3 لعجلة الحروف التفاعلية والمؤثرات البصرية وفيزياء الاحتفال
+ * عجلة الحروف الخفيفة (Canvas 2D بدون مكتبات خارجية)
+ * - تُرسم مرة واحدة فقط، ثم تدور عبر CSS transform (تسريع GPU) => سلسة جداً على الجوال
+ * - استدعاء الـ callback مضمون دائماً حتى لو حدث خطأ (حتى لا تتوقف اللعبة)
+ * - نفس الواجهة السابقة: initPhaserWheel(containerId, cb) و triggerWheelSpin(letter, cb)
  */
 
-class PhaserWheelScene extends Phaser.Scene {
-  constructor() {
-    super({ key: 'WheelScene' });
+const WHEEL_AR_LETTERS = ['ا', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي'];
+const WHEEL_EN_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+
+const LightWheel = {
+  container: null,
+  canvas: null,
+  pointer: null,
+  letters: WHEEL_AR_LETTERS,
+  angle: 0,          // الزاوية الحالية بالدرجات
+  size: 320,
+  spinRaf: null,
+  spinToken: 0,
+
+  currentLetters() {
     const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
-    this.letters = isEn
-      ? ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
-      : ['ا', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي'];
-    this.isSpinning = false;
-    this.wheelContainer = null;
-    this.pointerContainer = null;
-    this.selectedLetter = this.letters[0];
-  }
+    return isEn ? WHEEL_EN_LETTERS : WHEEL_AR_LETTERS;
+  },
 
-  create() {
-    const width = this.scale.width;
-    const height = this.scale.height;
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = Math.min(centerX, centerY) - 18;
+  init(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return null;
+    this.cancelSpin();
+    this.container = container;
+    container.innerHTML = '';
+    container.style.position = 'relative';
 
-    // هالة وظل ناعم خلف العجلة لإعطاء عمق ثلاثي الأبعاد
-    const ambientGlow = this.add.graphics();
-    ambientGlow.fillStyle(0x000000, 0.4);
-    ambientGlow.fillCircle(centerX, centerY + 6, radius + 8);
+    const rect = container.getBoundingClientRect();
+    this.size = Math.round(Math.min(rect.width || 320, rect.height || rect.width || 320, 370));
 
-    // الحاوية الدوارة الرئيسية
-    this.wheelContainer = this.add.container(centerX, centerY);
+    // العجلة
+    this.canvas = document.createElement('canvas');
+    this.canvas.className = 'lw-wheel';
+    this.canvas.style.width = this.size + 'px';
+    this.canvas.style.height = this.size + 'px';
+    this.canvas.style.willChange = 'transform';
+    container.appendChild(this.canvas);
 
-    // تدرج ألوان فخم وهادئ يريح العين (كحلي ملكي + سبج مسائي متناسق)
-    const colorA = 0x0f172a; // Obsidian Slate فخم وعميق
-    const colorB = 0x1e1b4b; // Midnight Royal Indigo ملكي أنيق
+    // المؤشر العلوي
+    this.pointer = document.createElement('div');
+    this.pointer.className = 'lw-pointer';
+    this.pointer.innerHTML =
+      '<svg viewBox="0 0 30 40" width="30" height="40" aria-hidden="true">' +
+      '<path d="M2 2 L28 2 L15 36 Z" fill="#d97706" stroke="#fef08a" stroke-width="1.5" stroke-linejoin="round"/>' +
+      '<path d="M2 2 L15 2 L15 36 Z" fill="#fbbf24"/>' +
+      '<circle cx="15" cy="10" r="4.5" fill="#ef4444"/>' +
+      '<circle cx="15" cy="3" r="5" fill="#e2e8f0" stroke="#0f172a" stroke-width="1.5"/>' +
+      '</svg>';
+    container.appendChild(this.pointer);
 
-    const sliceAngle = (Math.PI * 2) / this.letters.length;
-    const isEn = (typeof i18n !== 'undefined' && i18n.currentLang === 'en');
-    const innerRadius = radius - 11;
+    this.letters = this.currentLetters();
+    this.draw();
+    this.applyRotation();
+    return this;
+  },
 
-    // 1. رسم شرائح العجلة الداخلية مع فواصل ذهبية ناعمة
-    for (let i = 0; i < this.letters.length; i++) {
-      const startAngle = i * sliceAngle - Math.PI / 2;
-      const endAngle = startAngle + sliceAngle;
-      const color = (i % 2 === 0) ? colorA : colorB;
+  draw() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const s = this.size;
+    this.canvas.width = Math.round(s * dpr);
+    this.canvas.height = Math.round(s * dpr);
+    const ctx = this.canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, s, s);
 
-      const sliceGfx = this.add.graphics();
-      sliceGfx.fillStyle(color, 1);
-      sliceGfx.lineStyle(1.5, 0xd97706, 0.35); // فاصل ذهبي خفيف وأنيق
+    const c = s / 2;
+    const radius = c - 6;
+    const inner = radius - 11;
+    const n = this.letters.length;
+    const slice = (Math.PI * 2) / n;
+    const isEn = this.letters === WHEEL_EN_LETTERS;
 
-      sliceGfx.beginPath();
-      sliceGfx.moveTo(0, 0);
-      sliceGfx.arc(0, 0, innerRadius, startAngle, endAngle);
-      sliceGfx.closePath();
-      sliceGfx.fillPath();
-      sliceGfx.strokePath();
+    ctx.save();
+    ctx.translate(c, c);
 
-      this.wheelContainer.add(sliceGfx);
-
-      // موضع الحرف والوسام الدائري
-      const textAngle = startAngle + sliceAngle / 2;
-      const textRadius = innerRadius * 0.77;
-      const tx = Math.cos(textAngle) * textRadius;
-      const ty = Math.sin(textAngle) * textRadius;
-
-      // وسام دائري خلف كل حرف لضمان الوضوح التام والقراءة المريحة
-      const medallion = this.add.graphics();
-      medallion.fillStyle(0x020617, 0.65);
-      medallion.lineStyle(1.5, 0xf59e0b, 0.4);
-      medallion.fillCircle(tx, ty, 13.5);
-      medallion.strokeCircle(tx, ty, 13.5);
-      this.wheelContainer.add(medallion);
-
-      // الحرف بحجم خط واضح وظل متقن
-      const fontSizePx = isEn ? 19 : 20;
-      const letterText = this.add.text(tx, ty, this.letters[i], {
-        fontFamily: isEn ? 'Inter, system-ui, sans-serif' : 'Cairo, Tajawal, sans-serif',
-        fontSize: `${fontSizePx}px`,
-        fontStyle: 'bold',
-        color: '#ffffff',
-        stroke: '#020617',
-        strokeThickness: 3.5
-      }).setOrigin(0.5);
-
-      letterText.setRotation(textAngle + Math.PI / 2);
-      this.wheelContainer.add(letterText);
+    // الشرائح
+    for (let i = 0; i < n; i++) {
+      const a0 = i * slice - Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, inner, a0, a0 + slice);
+      ctx.closePath();
+      ctx.fillStyle = i % 2 === 0 ? '#0f172a' : '#1e1b4b';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(217,119,6,0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
     }
 
-    // 2. إطار العجلة الخارجي الفاخر (Metallic Gold Multi-Bezel)
-    const rimGfx = this.add.graphics();
-    // حافة خارجية داكنة
-    rimGfx.lineStyle(4, 0x090d16, 1);
-    rimGfx.strokeCircle(0, 0, radius);
+    // الحروف
+    const fontPx = Math.max(15, Math.round(s * (isEn ? 0.052 : 0.056)));
+    const medR = Math.max(11, Math.round(s * 0.038));
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${fontPx}px ${isEn ? 'Inter, system-ui, sans-serif' : 'Cairo, Tajawal, system-ui, sans-serif'}`;
+    for (let i = 0; i < n; i++) {
+      const mid = i * slice - Math.PI / 2 + slice / 2;
+      const r = inner * 0.78;
+      const x = Math.cos(mid) * r;
+      const y = Math.sin(mid) * r;
+      ctx.beginPath();
+      ctx.arc(x, y, medR, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(2,6,23,0.65)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(245,158,11,0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
 
-    // إطار ذهبي مصقول عريض
-    rimGfx.lineStyle(10, 0xd97706, 1);
-    rimGfx.strokeCircle(0, 0, radius - 5);
-
-    // حلقة لمعان ذهبية براقة (Specular Highlight)
-    rimGfx.lineStyle(1.8, 0xfef08a, 0.95);
-    rimGfx.strokeCircle(0, 0, radius - 10);
-
-    // حز داخلي لإعطاء إحساس بالعمق ثلاثي الأبعاد
-    rimGfx.lineStyle(2, 0x020617, 0.65);
-    rimGfx.strokeCircle(0, 0, radius - 11.5);
-    this.wheelContainer.add(rimGfx);
-
-    // 3. المسامير المعدنية البارزة على الإطار الخارجي (Golden 3D Pegs)
-    const pegRadius = radius - 5.5;
-    const pegsGfx = this.add.graphics();
-    for (let i = 0; i < this.letters.length; i++) {
-      const angle = i * sliceAngle - Math.PI / 2;
-      const px = Math.cos(angle) * pegRadius;
-      const py = Math.sin(angle) * pegRadius;
-
-      // قاعدة المسمار
-      pegsGfx.fillStyle(0x78350f, 1);
-      pegsGfx.fillCircle(px, py, 3.5);
-
-      // قلب المسمار الذهبي اللامع
-      pegsGfx.fillStyle(0xf59e0b, 1);
-      pegsGfx.fillCircle(px, py, 2.5);
-
-      // وميض النور
-      pegsGfx.fillStyle(0xffffff, 0.9);
-      pegsGfx.fillCircle(px - 0.8, py - 0.8, 1);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(mid + Math.PI / 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(this.letters[i], 0, 1);
+      ctx.restore();
     }
-    this.wheelContainer.add(pegsGfx);
 
-    // 4. قلب العجلة الذهبي ثلاثي الأبعاد (Center Hub)
-    const hubGfx = this.add.graphics();
-    const hubRadius = radius * 0.23;
+    // الإطار الذهبي
+    ctx.lineWidth = 4; ctx.strokeStyle = '#090d16';
+    ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 10; ctx.strokeStyle = '#d97706';
+    ctx.beginPath(); ctx.arc(0, 0, radius - 5, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 1.8; ctx.strokeStyle = 'rgba(254,240,138,0.95)';
+    ctx.beginPath(); ctx.arc(0, 0, radius - 10, 0, Math.PI * 2); ctx.stroke();
 
-    // حلقة الترس الذهبي الخارجي
-    hubGfx.fillStyle(0x78350f, 1);
-    hubGfx.lineStyle(3, 0xf59e0b, 1);
-    hubGfx.fillCircle(0, 0, hubRadius);
-    hubGfx.strokeCircle(0, 0, hubRadius);
+    // المسامير
+    for (let i = 0; i < n; i++) {
+      const a = i * slice - Math.PI / 2;
+      const px = Math.cos(a) * (radius - 5.5);
+      const py = Math.sin(a) * (radius - 5.5);
+      ctx.fillStyle = '#78350f'; ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
 
-    // قرص ذهبي متوسط
-    hubGfx.lineStyle(2, 0xfef08a, 0.9);
-    hubGfx.strokeCircle(0, 0, hubRadius * 0.85);
+    // المركز
+    const hub = radius * 0.23;
+    ctx.fillStyle = '#78350f'; ctx.beginPath(); ctx.arc(0, 0, hub, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = '#f59e0b'; ctx.stroke();
+    ctx.fillStyle = '#090d16'; ctx.beginPath(); ctx.arc(0, 0, hub * 0.72, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fde047';
+    ctx.font = `bold ${Math.round(radius * 0.16)}px system-ui, sans-serif`;
+    ctx.fillText('✦', 0, 1);
 
-    // قبة سبج داكنة مصقولة
-    hubGfx.fillStyle(0x090d16, 1);
-    hubGfx.fillCircle(0, 0, hubRadius * 0.72);
+    ctx.restore();
+  },
 
-    // انعكاس زجاجي ناعم في النصف العلوي
-    hubGfx.fillStyle(0xffffff, 0.15);
-    hubGfx.beginPath();
-    hubGfx.arc(0, 0, hubRadius * 0.65, Math.PI, 0);
-    hubGfx.closePath();
-    hubGfx.fillPath();
+  applyRotation() {
+    if (this.canvas) this.canvas.style.transform = `rotate(${this.angle}deg)`;
+  },
 
-    this.wheelContainer.add(hubGfx);
+  cancelSpin() {
+    if (this.spinRaf) cancelAnimationFrame(this.spinRaf);
+    this.spinRaf = null;
+    this.spinToken++;
+  },
 
-    // رمز الشعار الذهبي المركزي (نجمة الكريستال الملكية)
-    const centerEmblem = this.add.text(0, 0, '✦', {
-      fontSize: `${Math.floor(radius * 0.16)}px`,
-      color: '#fde047',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-    this.wheelContainer.add(centerEmblem);
+  spinTo(letter, onDone) {
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      try { if (onDone) onDone(letter); } catch (e) { console.error(e); }
+    };
 
-    // 5. المؤشر العلوي ثلاثي الأبعاد مع ارتداد فيزيائي حركي (Interactive Spring Pointer)
-    this.pointerContainer = this.add.container(centerX, centerY - radius + 11);
-
-    const pointerGfx = this.add.graphics();
-    // ظل المؤشر
-    pointerGfx.fillStyle(0x000000, 0.4);
-    pointerGfx.beginPath();
-    pointerGfx.moveTo(-13, 2);
-    pointerGfx.lineTo(13, 2);
-    pointerGfx.lineTo(0, 36);
-    pointerGfx.closePath();
-    pointerGfx.fillPath();
-
-    // السهم الذهبي المصقول (وجه أيسر لامع، وجه أيمن مظلل لإعطاء تجسيم ثلاثي الأبعاد)
-    // الوجه الأيسر
-    pointerGfx.fillStyle(0xfbbf24, 1);
-    pointerGfx.beginPath();
-    pointerGfx.moveTo(-13, 0);
-    pointerGfx.lineTo(0, 0);
-    pointerGfx.lineTo(0, 32);
-    pointerGfx.closePath();
-    pointerGfx.fillPath();
-
-    // الوجه الأيمن
-    pointerGfx.fillStyle(0xd97706, 1);
-    pointerGfx.beginPath();
-    pointerGfx.moveTo(0, 0);
-    pointerGfx.lineTo(13, 0);
-    pointerGfx.lineTo(0, 32);
-    pointerGfx.closePath();
-    pointerGfx.fillPath();
-
-    // إطار ذهبي رفيع براق
-    pointerGfx.lineStyle(1.5, 0xfef08a, 1);
-    pointerGfx.beginPath();
-    pointerGfx.moveTo(-13, 0);
-    pointerGfx.lineTo(13, 0);
-    pointerGfx.lineTo(0, 32);
-    pointerGfx.closePath();
-    pointerGfx.strokePath();
-
-    // جوهرة ياقوتية مركزية في قلب المؤشر
-    pointerGfx.fillStyle(0xef4444, 1);
-    pointerGfx.fillCircle(0, 8, 4.5);
-    pointerGfx.fillStyle(0xffffff, 0.85);
-    pointerGfx.fillCircle(-1, 6.5, 1.5);
-
-    // برغي التثبيت العلوي (Chrome Pivot Pin)
-    pointerGfx.fillStyle(0x0f172a, 1);
-    pointerGfx.fillCircle(0, 0, 6.5);
-    pointerGfx.fillStyle(0xe2e8f0, 1);
-    pointerGfx.fillCircle(0, 0, 5);
-    pointerGfx.fillStyle(0xffffff, 1);
-    pointerGfx.fillCircle(-1.2, -1.2, 1.8);
-
-    this.pointerContainer.add(pointerGfx);
-  }
-
-  spinToLetter(targetLetter, onComplete) {
-    if (this.isSpinning) return;
-    this.isSpinning = true;
-
-    const letterIndex = this.letters.indexOf(targetLetter);
-    if (letterIndex === -1) return;
-
-    const sliceAngleDeg = 360 / this.letters.length;
-    // زاوية الحرف المستهدف عند المؤشر العلوي (270 درجة أو -90)
-    const targetAngle = 360 - (letterIndex * sliceAngleDeg);
-    const extraRounds = (4 + Math.floor(Math.random() * 3)) * 360;
-    const finalAngle = this.wheelContainer.angle + extraRounds + targetAngle - (this.wheelContainer.angle % 360);
-
-    let lastClickAngle = this.wheelContainer.angle;
-
-    this.tweens.add({
-      targets: this.wheelContainer,
-      angle: finalAngle,
-      duration: 3400,
-      ease: 'Cubic.easeOut',
-      onUpdate: (tween, target) => {
-        const diff = Math.abs(target.angle - lastClickAngle);
-        if (diff >= sliceAngleDeg) {
-          lastClickAngle = target.angle;
-
-          // ارتداد فيزيائي واقعي للمؤشر العلوي (Spring Flapper Wobble)
-          if (this.pointerContainer) {
-            this.tweens.killTweensOf(this.pointerContainer);
-            this.pointerContainer.angle = -18;
-            this.tweens.add({
-              targets: this.pointerContainer,
-              angle: 0,
-              duration: 85,
-              ease: 'Back.easeOut'
-            });
-          }
-
-          if (typeof sounds !== 'undefined') {
-            const pitch = 650 + (tween.progress * 400);
-            sounds.playSpinClick(pitch);
-          }
-        }
-      },
-      onComplete: () => {
-        this.isSpinning = false;
-        this.selectedLetter = targetLetter;
-        if (typeof sounds !== 'undefined') {
-          sounds.playCorrect();
-        }
-        this.burstVictoryEffects();
-        if (onComplete) onComplete(targetLetter);
+    try {
+      // اختيار مجموعة الحروف المناسبة للحرف المطلوب (يتجنب مشاكل تبديل اللغة)
+      const wanted = WHEEL_AR_LETTERS.includes(letter) ? WHEEL_AR_LETTERS : WHEEL_EN_LETTERS;
+      if (!this.canvas || !document.body.contains(this.canvas)) {
+        const el = document.getElementById('phaser-wheel-container');
+        if (el) this.init('phaser-wheel-container');
       }
-    });
-  }
+      if (!this.canvas) { done(); return; }
+      if (this.letters !== wanted) { this.letters = wanted; this.draw(); }
 
-  burstVictoryEffects() {
-    const width = this.scale.width;
-    const height = this.scale.height;
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = Math.min(centerX, centerY) - 18;
+      const idx = this.letters.indexOf(letter);
+      if (idx === -1) { done(); return; }
 
-    // موجة ضوئية حلقية تتوسع من المركز (Shockwave Ring)
-    const shockwave = this.add.graphics();
-    shockwave.lineStyle(4, 0xfacc15, 0.95);
-    shockwave.strokeCircle(centerX, centerY, radius * 0.25);
-    this.tweens.add({
-      targets: shockwave,
-      scaleX: 3.4,
-      scaleY: 3.4,
-      alpha: 0,
-      duration: 750,
-      ease: 'Cubic.easeOut',
-      onComplete: () => shockwave.destroy()
-    });
+      this.cancelSpin();
+      const token = this.spinToken;
+      const sliceDeg = 360 / this.letters.length;
+      // الحرف i يقع منتصفه عند (i+0.5)*slice من الأعلى، ندوّر العجلة بعكسه
+      const targetMod = (360 - (idx + 0.5) * sliceDeg + 360) % 360;
+      const startAngle = this.angle;
+      const currentMod = ((startAngle % 360) + 360) % 360;
+      let delta = targetMod - currentMod;
+      if (delta < 0) delta += 360;
+      const totalDelta = delta + (4 + Math.floor(Math.random() * 3)) * 360;
 
-    // انفجار جزيئات ونجوم ذهبية حول العجلة
-    for (let i = 0; i < 35; i++) {
-      const glyph = i % 2 === 0 ? '✨' : '⭐';
-      const star = this.add.text(centerX, centerY, glyph, {
-        fontSize: '22px'
-      }).setOrigin(0.5);
+      const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const duration = reduceMotion ? 600 : 3400;
+      const t0 = performance.now();
+      let lastTick = Math.floor(startAngle / sliceDeg);
 
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 90 + Math.random() * 160;
+      const step = (now) => {
+        if (token !== this.spinToken) { done(); return; }
+        const p = Math.min(1, (now - t0) / duration);
+        const eased = 1 - Math.pow(1 - p, 3);
+        this.angle = startAngle + totalDelta * eased;
+        this.applyRotation();
 
-      this.tweens.add({
-        targets: star,
-        x: centerX + Math.cos(angle) * speed,
-        y: centerY + Math.sin(angle) * speed,
-        alpha: 0,
-        scale: 1.6,
-        duration: 950,
-        ease: 'Power2',
-        onComplete: () => star.destroy()
-      });
+        const tick = Math.floor(this.angle / sliceDeg);
+        if (tick !== lastTick) {
+          lastTick = tick;
+          this.flapPointer();
+          if (typeof sounds !== 'undefined' && sounds.playSpinClick) {
+            try { sounds.playSpinClick(650 + p * 400); } catch (e) {}
+          }
+        }
+
+        if (p < 1) {
+          this.spinRaf = requestAnimationFrame(step);
+        } else {
+          this.spinRaf = null;
+          this.angle = this.angle % 360;
+          this.applyRotation();
+          if (typeof sounds !== 'undefined' && sounds.playCorrect) {
+            try { sounds.playCorrect(); } catch (e) {}
+          }
+          this.burst();
+          done();
+        }
+      };
+      this.spinRaf = requestAnimationFrame(step);
+
+      // حماية: إذا كانت الصفحة في الخلفية (rAF متوقف) نكمل اللعبة رغم ذلك
+      setTimeout(() => {
+        if (!finished && token === this.spinToken) {
+          this.cancelSpin();
+          this.angle = (startAngle + totalDelta) % 360;
+          this.applyRotation();
+          done();
+        }
+      }, duration + 1500);
+    } catch (err) {
+      console.error('Wheel error:', err);
+      done();
+    }
+  },
+
+  flapPointer() {
+    if (!this.pointer) return;
+    this.pointer.classList.remove('lw-flap');
+    void this.pointer.offsetWidth; // إعادة تشغيل الحركة
+    this.pointer.classList.add('lw-flap');
+  },
+
+  burst() {
+    if (!this.container) return;
+    const glyphs = ['✨', '⭐'];
+    for (let i = 0; i < 12; i++) {
+      const s = document.createElement('span');
+      s.className = 'lw-spark';
+      s.textContent = glyphs[i % 2];
+      const a = (i / 12) * Math.PI * 2;
+      const d = this.size * 0.45;
+      s.style.setProperty('--dx', `${Math.cos(a) * d}px`);
+      s.style.setProperty('--dy', `${Math.sin(a) * d}px`);
+      this.container.appendChild(s);
+      setTimeout(() => s.remove(), 900);
     }
   }
-}
+};
 
-let phaserGame = null;
+// ===== نفس الواجهة القديمة حتى يعمل باقي الكود بدون تعديل =====
 let phaserWheelScene = null;
 
-function initPhaserWheel(containerId, onLetterLand) {
-  const container = document.getElementById(containerId);
-  if (!container || typeof Phaser === 'undefined') {
-    console.warn('Phaser not loaded or container not found');
-    return null;
-  }
-
-  if (phaserGame) {
-    try {
-      phaserGame.destroy(true);
-    } catch (e) {
-      console.warn('Error destroying existing Phaser instance:', e);
-    }
-    phaserGame = null;
-    phaserWheelScene = null;
-    container.innerHTML = '';
-  }
-
-  const rect = container.getBoundingClientRect();
-  const size = Math.min(rect.width || 370, 370);
-
-  const config = {
-    type: Phaser.AUTO,
-    parent: containerId,
-    width: size,
-    height: size,
-    transparent: true,
-    physics: { default: 'arcade' },
-    scene: PhaserWheelScene
-  };
-
-  phaserGame = new Phaser.Game(config);
-  phaserGame.events.on('ready', () => {
-    phaserWheelScene = phaserGame.scene.getScene('WheelScene');
-  });
-
-  return phaserGame;
+function initPhaserWheel(containerId) {
+  LightWheel.init(containerId);
+  phaserWheelScene = LightWheel;
+  return LightWheel;
 }
 
 function triggerWheelSpin(letter, callback) {
-  if (phaserWheelScene) {
-    phaserWheelScene.spinToLetter(letter, callback);
-  } else {
-    // خيار بديل سريع بدون Canvas
-    if (callback) callback(letter);
-  }
+  LightWheel.spinTo(letter, callback);
 }
+
+// إعادة الرسم عند تغيير حجم الشاشة / تدوير الجوال
+let _wheelResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_wheelResizeTimer);
+  _wheelResizeTimer = setTimeout(() => {
+    if (LightWheel.container && !LightWheel.spinRaf) {
+      const keepAngle = LightWheel.angle;
+      const keepLetters = LightWheel.letters;
+      LightWheel.init(LightWheel.container.id);
+      LightWheel.letters = keepLetters;
+      LightWheel.draw();
+      LightWheel.angle = keepAngle;
+      LightWheel.applyRotation();
+    }
+  }, 250);
+});

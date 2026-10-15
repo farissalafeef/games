@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { WebSocketServer, WebSocket } = require('ws');
 
 const PORT = process.env.PORT || 3000;
@@ -27,6 +28,11 @@ const server = http.createServer((req, res) => {
   }
 
   const filePath = path.join(__dirname, reqPath);
+  if (!filePath.startsWith(__dirname)) {
+    res.writeHead(403);
+    res.end();
+    return;
+  }
 
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
@@ -38,8 +44,24 @@ const server = http.createServer((req, res) => {
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-    res.writeHead(200, { 'Content-Type': contentType });
-    fs.createReadStream(filePath).pipe(res);
+    const headers = { 'Content-Type': contentType };
+    if (ext === '.html' || reqPath === '/sw.js') {
+      headers['Cache-Control'] = 'no-cache';
+    } else {
+      headers['Cache-Control'] = 'public, max-age=86400';
+    }
+
+    const compressible = ['.html', '.css', '.js', '.json', '.svg'].includes(ext);
+    const acceptsGzip = /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+    if (compressible && acceptsGzip) {
+      headers['Content-Encoding'] = 'gzip';
+      headers['Vary'] = 'Accept-Encoding';
+      res.writeHead(200, headers);
+      fs.createReadStream(filePath).pipe(zlib.createGzip()).pipe(res);
+    } else {
+      res.writeHead(200, headers);
+      fs.createReadStream(filePath).pipe(res);
+    }
   });
 });
 
@@ -86,7 +108,19 @@ function getSafeRoomData(room) {
 // إنشاء خادم WebSocket للغرف واللعب الجماعي المباشر
 const wss = new WebSocketServer({ server });
 
+// نبض دوري لإبقاء الاتصال حياً عبر بروكسي Render وشبكات الجوال
+const heartbeat = setInterval(() => {
+  wss.clients.forEach((client) => {
+    if (client.isAlive === false) return client.terminate();
+    client.isAlive = false;
+    try { client.ping(); } catch (e) {}
+  });
+}, 25000);
+wss.on('close', () => clearInterval(heartbeat));
+
 wss.on('connection', (ws) => {
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
   let playerRoomCode = null;
   let playerId = null;
 
